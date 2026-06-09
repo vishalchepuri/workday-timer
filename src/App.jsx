@@ -25,12 +25,14 @@ import {
 } from "./lib/localDatabase.js";
 import {
   deleteRemoteHoliday,
+  fetchAdminHourLogData,
   fetchHourLogData,
+  upsertRemoteProfile,
   upsertRemoteHoliday,
   upsertRemoteSession,
   upsertRemoteSettings,
 } from "./lib/supabaseData.js";
-import { isSupabaseConfigured, supabase } from "./lib/supabaseClient.js";
+import { adminEmail, isSupabaseConfigured, supabase } from "./lib/supabaseClient.js";
 
 function formatDate(date) {
   return new Intl.DateTimeFormat(undefined, {
@@ -760,6 +762,161 @@ function RecentTimeline({ completedSessions }) {
   );
 }
 
+function AdminPortal({ isAdmin }) {
+  const [adminData, setAdminData] = useState(null);
+  const [status, setStatus] = useState(isAdmin ? "Loading admin data..." : "Admin access is not enabled for this account.");
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!isAdmin) return undefined;
+    setStatus("Loading admin data...");
+    fetchAdminHourLogData()
+      .then((data) => {
+        if (cancelled) return;
+        setAdminData(data);
+        setStatus("");
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        console.warn("Unable to load admin data", error);
+        setStatus("Admin database access is not ready. Run the updated Supabase admin SQL policies.");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isAdmin]);
+
+  const profiles = adminData?.profiles || [];
+  const sessions = adminData?.sessions || [];
+  const profileMap = new Map(profiles.map((profile) => [profile.id, profile]));
+  const completedSessions = sessions.filter((session) => session.endTime);
+  const activeSessions = sessions.filter((session) => !session.endTime);
+  const today = new Date();
+  const todaySessions = sessionsBetween(completedSessions, startOfDay(today), today);
+  const monthSessions = sessionsBetween(completedSessions, startOfMonth(today), today);
+  const users = profiles.map((profile) => {
+    const userSessions = completedSessions.filter((session) => session.userId === profile.id);
+    const latestSession = userSessions[0];
+    return {
+      ...profile,
+      total: totalDuration(userSessions),
+      sessions: userSessions.length,
+      latest: latestSession ? new Date(latestSession.startTime) : null,
+    };
+  });
+  const summary = [
+    ["Users", profiles.length],
+    ["Active now", activeSessions.length],
+    ["Today total", formatDuration(totalDuration(todaySessions))],
+    ["This month", formatDuration(totalDuration(monthSessions))],
+  ];
+
+  return (
+    <section className="admin-panel" aria-label="Admin portal">
+      <div className="section-header">
+        <div>
+          <p className="eyebrow">Admin</p>
+          <h2>All office logs</h2>
+          <p className="muted">Review team sessions, active clocks, totals, and recent login/logout activity.</p>
+        </div>
+        {isAdmin && (
+          <button
+            className="tool-button"
+            type="button"
+            onClick={() => {
+              setAdminData(null);
+              setStatus("Refreshing admin data...");
+              fetchAdminHourLogData()
+                .then((data) => {
+                  setAdminData(data);
+                  setStatus("");
+                })
+                .catch(() => setStatus("Admin database access is not ready. Run the updated Supabase admin SQL policies."));
+            }}
+          >
+            Refresh
+          </button>
+        )}
+      </div>
+
+      {status && <div className="empty-state">{status}</div>}
+
+      {adminData && (
+        <>
+          <div className="admin-summary-grid">
+            {summary.map(([label, value]) => (
+              <article className="stat-card" key={label}>
+                <span>{label}</span>
+                <strong>{value}</strong>
+              </article>
+            ))}
+          </div>
+
+          <div className="admin-grid">
+            <section className="admin-card">
+              <div className="section-header">
+                <div>
+                  <p className="eyebrow">People</p>
+                  <h2>User totals</h2>
+                </div>
+              </div>
+              <div className="admin-user-list">
+                {users.length ? (
+                  users.map((profile) => (
+                    <article className="admin-user-row" key={profile.id}>
+                      <div>
+                        <strong>{profile.name}</strong>
+                        <span>{profile.email || profile.id}</span>
+                      </div>
+                      <div>
+                        <b>{formatDuration(profile.total)}</b>
+                        <span>
+                          {profile.sessions} sessions
+                          {profile.latest ? `, latest ${formatDate(profile.latest)}` : ""}
+                        </span>
+                      </div>
+                    </article>
+                  ))
+                ) : (
+                  <div className="empty-state">No user profiles found yet.</div>
+                )}
+              </div>
+            </section>
+
+            <section className="admin-card">
+              <div className="section-header">
+                <div>
+                  <p className="eyebrow">Sessions</p>
+                  <h2>Recent activity</h2>
+                </div>
+              </div>
+              <div className="admin-session-list">
+                {sessions.slice(0, 30).map((session) => {
+                  const profile = profileMap.get(session.userId);
+                  const start = new Date(session.startTime);
+                  const end = session.endTime ? new Date(session.endTime) : null;
+                  return (
+                    <article className="admin-session-row" key={session.id}>
+                      <div>
+                        <strong>{profile?.name || session.userId}</strong>
+                        <span>{formatDate(start)}</span>
+                      </div>
+                      <div>
+                        <b>{formatTime(start)} - {end ? formatTime(end) : "Active"}</b>
+                        <span>{end ? formatDuration(sessionDuration(session)) : "Clock is running"}</span>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
 function TargetSettings({ settings, selectedMonth, onSelectMonth, onUpdateTarget, onUpdateTrackingStart, onAddHoliday, onRemoveHoliday }) {
   const [holidayDate, setHolidayDate] = useState(dayKey(new Date()));
   const [holidayReason, setHolidayReason] = useState("");
@@ -887,6 +1044,23 @@ function MonthlyCalendar({ completedSessions, settings, currentDate }) {
             )}
           </article>
         ))}
+      </div>
+
+      <div className="calendar-mobile-list">
+        {calendarDays
+          .filter((day) => day.inMonth)
+          .map((day) => (
+            <article className={`calendar-list-day ${day.status}`} key={day.key}>
+              <div>
+                <strong>{formatDate(day.date)}</strong>
+                <span>{day.holidayReason || statusLabels[day.status]}</span>
+              </div>
+              <div>
+                <b>{day.logged ? formatDuration(day.logged) : "0h 00m"}</b>
+                {day.target > 0 && <small>{formatBalance(day.balance)}</small>}
+              </div>
+            </article>
+          ))}
       </div>
     </section>
   );
@@ -1217,10 +1391,10 @@ function AddSessionPanel({ selectedMonth, onAddSession }) {
   );
 }
 
-function Dashboard({ user, data, setData, onSignOut, cloudStatus }) {
+function Dashboard({ user, data, setData, onSignOut, cloudStatus, isAdmin, initialView = "overview" }) {
   const [liveNow, setLiveNow] = useState(new Date());
   const [selectedMonth, setSelectedMonth] = useState(monthKey(new Date()));
-  const [activeView, setActiveView] = useState("overview");
+  const [activeView, setActiveView] = useState(initialView);
   const settings = getUserSettings(data, user.id);
   const userSessions = data.sessions.filter((session) => session.userId === user.id);
   const activeSession = userSessions.find((session) => !session.endTime);
@@ -1234,11 +1408,20 @@ function Dashboard({ user, data, setData, onSignOut, cloudStatus }) {
     return () => window.clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    setActiveView(initialView);
+  }, [initialView]);
+
   function syncCloud(action) {
     if (!isCloudUser) return;
     action().catch((error) => {
       console.warn("Supabase sync failed", error);
     });
+  }
+
+  function selectView(viewId) {
+    setActiveView(viewId);
+    window.history.pushState({}, "", viewId === "admin" ? "/admin" : "/app");
   }
 
   function toggleClock() {
@@ -1385,6 +1568,7 @@ function Dashboard({ user, data, setData, onSignOut, cloudStatus }) {
     { id: "reports", label: "Reports" },
     { id: "history", label: "History" },
     { id: "manual", label: "Manual" },
+    ...(isAdmin ? [{ id: "admin", label: "Admin" }] : []),
   ];
 
   const activeViewLabel = views.find((view) => view.id === activeView)?.label || "Overview";
@@ -1404,7 +1588,7 @@ function Dashboard({ user, data, setData, onSignOut, cloudStatus }) {
               className={activeView === view.id ? "active" : ""}
               type="button"
               key={view.id}
-              onClick={() => setActiveView(view.id)}
+              onClick={() => selectView(view.id)}
             >
               {view.label}
             </button>
@@ -1433,7 +1617,7 @@ function Dashboard({ user, data, setData, onSignOut, cloudStatus }) {
               className={activeView === view.id ? "active" : ""}
               type="button"
               key={view.id}
-              onClick={() => setActiveView(view.id)}
+              onClick={() => selectView(view.id)}
             >
               {view.label}
             </button>
@@ -1486,6 +1670,12 @@ function Dashboard({ user, data, setData, onSignOut, cloudStatus }) {
             <AddSessionPanel selectedMonth={selectedMonth} onAddSession={addManualSession} />
           </section>
         )}
+
+        {activeView === "admin" && (
+          <section className="dashboard-view">
+            <AdminPortal isAdmin={isAdmin} />
+          </section>
+        )}
       </section>
     </main>
   );
@@ -1494,7 +1684,7 @@ function Dashboard({ user, data, setData, onSignOut, cloudStatus }) {
 function getAppRoute() {
   if (typeof window === "undefined") return "/";
   const path = window.location.pathname;
-  if (path === "/signin" || path === "/signup" || path === "/app") return path;
+  if (path === "/signin" || path === "/signup" || path === "/app" || path === "/admin") return path;
   return "/";
 }
 
@@ -1505,6 +1695,7 @@ export default function App() {
   const [route, setRoute] = useState(getAppRoute);
   const loadedCloudUsers = useRef(new Set());
   const user = useMemo(() => data.users.find((candidate) => candidate.id === currentUserId) || null, [data.users, currentUserId]);
+  const isAdminUser = Boolean(user?.email && adminEmail && user.email.toLowerCase() === adminEmail);
 
   function navigate(path) {
     window.history.pushState({}, "", path);
@@ -1590,6 +1781,9 @@ export default function App() {
     });
     writeCurrentUserId(userId);
     setCurrentUserId(userId);
+    upsertRemoteProfile(authUser, name).catch((error) => {
+      console.warn("Unable to sync profile", error);
+    });
     loadCloudDataForUser(userId);
   }
 
@@ -1686,7 +1880,15 @@ export default function App() {
   return (
     <div className="app-shell">
       {user ? (
-        <Dashboard user={user} data={data} setData={setData} onSignOut={signOut} cloudStatus={cloudStatus} />
+        <Dashboard
+          user={user}
+          data={data}
+          setData={setData}
+          onSignOut={signOut}
+          cloudStatus={cloudStatus}
+          isAdmin={isAdminUser}
+          initialView={route === "/admin" && isAdminUser ? "admin" : "overview"}
+        />
       ) : route === "/" ? (
         <HomeScreen onGetStarted={() => navigate("/signup")} onSignIn={() => navigate("/signin")} />
       ) : (

@@ -4,6 +4,8 @@ const supabaseUrl =
   import.meta.env.VITE_SUPABASE_URL || import.meta.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseKey =
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "";
+export const adminEmail =
+  (import.meta.env.VITE_ADMIN_EMAIL || import.meta.env.NEXT_PUBLIC_ADMIN_EMAIL || "").trim().toLowerCase();
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseKey);
 

@@ -49,8 +49,10 @@ await build({
   define: {
     "import.meta.env.NEXT_PUBLIC_SUPABASE_URL": JSON.stringify(envValue("NEXT_PUBLIC_SUPABASE_URL")),
     "import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(envValue("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY")),
+    "import.meta.env.NEXT_PUBLIC_ADMIN_EMAIL": JSON.stringify(envValue("NEXT_PUBLIC_ADMIN_EMAIL")),
     "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(envValue("VITE_SUPABASE_URL")),
     "import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(envValue("VITE_SUPABASE_PUBLISHABLE_KEY")),
+    "import.meta.env.VITE_ADMIN_EMAIL": JSON.stringify(envValue("VITE_ADMIN_EMAIL")),
   },
   jsx: "automatic",
 });

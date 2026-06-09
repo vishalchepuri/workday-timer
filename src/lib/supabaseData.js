@@ -25,6 +25,14 @@ function toSessionRow(userId, session) {
   };
 }
 
+function toAppProfile(row) {
+  return {
+    id: row.user_id,
+    name: row.name || row.email || "User",
+    email: row.email || "",
+  };
+}
+
 function toAppSettings(settingsRow, holidayRows) {
   const currentMonth = new Date().toISOString().slice(0, 7);
   return {
@@ -36,6 +44,22 @@ function toAppSettings(settingsRow, holidayRows) {
       reason: holiday.reason || "",
     })),
   };
+}
+
+export async function upsertRemoteProfile(authUser, fallbackName = "User") {
+  if (!supabase || !authUser?.id) return;
+  const email = authUser.email || "";
+  const name = authUser.user_metadata?.name || fallbackName || email.split("@")[0] || "User";
+  const { error } = await supabase.from("hourlog_profiles").upsert(
+    {
+      user_id: authUser.id,
+      email,
+      name,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id" }
+  );
+  throwIfError(error);
 }
 
 export async function fetchHourLogData(userId) {
@@ -100,4 +124,36 @@ export async function deleteRemoteHoliday(userId, holidayDate) {
   if (!supabase) return;
   const { error } = await supabase.from("hourlog_holidays").delete().eq("user_id", userId).eq("holiday_date", holidayDate);
   throwIfError(error);
+}
+
+export async function fetchAdminHourLogData() {
+  if (!supabase) return null;
+
+  const [profilesResult, sessionsResult, settingsResult, holidaysResult] = await Promise.all([
+    supabase.from("hourlog_profiles").select("user_id,email,name").order("name"),
+    supabase.from("hourlog_sessions").select("id,user_id,start_time,end_time,note").order("start_time", { ascending: false }),
+    supabase.from("hourlog_settings").select("user_id,daily_target_hours,tracking_start_month,target_version"),
+    supabase.from("hourlog_holidays").select("user_id,holiday_date,reason").order("holiday_date", { ascending: false }),
+  ]);
+
+  throwIfError(profilesResult.error);
+  throwIfError(sessionsResult.error);
+  throwIfError(settingsResult.error);
+  throwIfError(holidaysResult.error);
+
+  const holidaysByUser = new Map();
+  (holidaysResult.data || []).forEach((holiday) => {
+    const current = holidaysByUser.get(holiday.user_id) || [];
+    current.push(holiday);
+    holidaysByUser.set(holiday.user_id, current);
+  });
+
+  return {
+    profiles: (profilesResult.data || []).map(toAppProfile),
+    sessions: (sessionsResult.data || []).map(toAppSession),
+    settings: (settingsResult.data || []).map((setting) => ({
+      userId: setting.user_id,
+      ...toAppSettings(setting, holidaysByUser.get(setting.user_id) || []),
+    })),
+  };
 }
