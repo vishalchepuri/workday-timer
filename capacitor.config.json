@@ -1,0 +1,13 @@
+{
+  "appId": "com.hourlog.officehours",
+  "appName": "HourLog",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "ios": {
+    "contentInset": "automatic",
+    "scheme": "HourLog"
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}
