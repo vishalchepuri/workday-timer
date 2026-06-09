@@ -1,15 +1,15 @@
 :root {
-  --bg: #080b12;
-  --panel: #111722;
-  --panel-strong: #151d2b;
-  --border: #263247;
-  --text: #f5f8ff;
-  --muted: #96a3b8;
-  --accent: #31d08f;
-  --accent-2: #58a6ff;
+  --bg: #000;
+  --panel: #080808;
+  --panel-strong: #111;
+  --border: #292929;
+  --text: #f7f7f7;
+  --muted: #a5a5a5;
+  --accent: #fff;
+  --accent-2: #c9c9c9;
   --danger: #ff6b6b;
-  --warning: #ffd166;
-  --shadow: 0 22px 70px rgba(0, 0, 0, 0.36);
+  --warning: #f3c969;
+  --shadow: 0 24px 80px rgba(0, 0, 0, 0.74);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", Inter, Segoe UI, sans-serif;
 }
 
@@ -26,9 +26,7 @@ html {
 body {
   min-height: 100vh;
   margin: 0;
-  background:
-    radial-gradient(circle at 20% 0%, rgba(49, 208, 143, 0.12), transparent 30rem),
-    linear-gradient(145deg, #080b12 0%, #101827 52%, #090d15 100%);
+  background: #000;
   color: var(--text);
   overflow-x: hidden;
 }
@@ -43,7 +41,7 @@ button {
 }
 
 .app-shell {
-  width: min(1180px, 100%);
+  width: min(1220px, 100%);
   min-height: 100vh;
   margin: 0 auto;
   padding: max(18px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
@@ -60,13 +58,20 @@ button {
   min-width: 0;
 }
 
-.auth-screen {
+.home-screen {
   min-height: calc(100vh - 38px);
   display: grid;
-  place-content: center;
-  gap: 22px;
+  grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.74fr);
+  gap: clamp(22px, 6vw, 72px);
+  align-items: center;
 }
 
+.home-copy {
+  display: grid;
+  gap: 24px;
+}
+
+.brand-line,
 .auth-brand {
   display: flex;
   align-items: center;
@@ -76,12 +81,17 @@ button {
 .brand-mark {
   width: 58px;
   height: 58px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid var(--border);
   border-radius: 8px;
   display: grid;
   place-items: center;
-  background: linear-gradient(145deg, #1a2635, #0e141d);
+  background: #0b0b0b;
   box-shadow: var(--shadow);
+}
+
+.brand-mark.compact {
+  width: 44px;
+  height: 44px;
 }
 
 .brand-mark span {
@@ -106,6 +116,19 @@ button {
   transform: rotate(45deg);
 }
 
+.brand-mark.compact span {
+  width: 22px;
+  height: 22px;
+  border-width: 3px;
+}
+
+.brand-mark.compact span::after {
+  left: 8px;
+  top: 3px;
+  width: 3px;
+  height: 9px;
+}
+
 .eyebrow {
   margin: 0 0 5px;
   color: var(--accent);
@@ -113,6 +136,100 @@ button {
   font-weight: 760;
   text-transform: uppercase;
   letter-spacing: 0;
+}
+
+.home-copy h1 {
+  max-width: 760px;
+  margin-bottom: 0;
+  font-size: clamp(3.2rem, 8vw, 6.5rem);
+  line-height: 0.96;
+  letter-spacing: 0;
+}
+
+.home-description {
+  max-width: 690px;
+  margin-bottom: 0;
+  color: var(--muted);
+  font-size: clamp(1.05rem, 2vw, 1.28rem);
+  line-height: 1.58;
+}
+
+.home-feature-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.home-feature-grid div {
+  min-height: 96px;
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #070707;
+  padding: 15px;
+  color: var(--text);
+  font-weight: 760;
+}
+
+.home-feature-grid svg {
+  color: var(--accent-2);
+}
+
+.home-action-panel {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #050505;
+  box-shadow: var(--shadow);
+  padding: 16px;
+}
+
+.home-preview {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.home-preview div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #000;
+  padding: 16px;
+}
+
+.home-preview span {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.home-preview strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.auth-screen {
+  min-height: calc(100vh - 38px);
+  display: grid;
+  place-items: center;
+}
+
+.back-home {
+  position: fixed;
+  top: max(18px, env(safe-area-inset-top));
+  left: max(18px, env(safe-area-inset-left));
+  min-height: 42px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  background: #060606;
+  padding: 0 14px;
+  cursor: pointer;
+  font-weight: 850;
 }
 
 h1,
@@ -128,6 +245,23 @@ p {
   letter-spacing: 0;
 }
 
+.auth-heading {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.auth-heading h1 {
+  margin-bottom: 0;
+  font-size: clamp(1.9rem, 6vw, 2.65rem);
+  line-height: 1.05;
+}
+
+.auth-heading p {
+  margin-bottom: 0;
+  color: var(--muted);
+}
+
 .auth-panel,
 .clock-panel,
 .report-panel,
@@ -137,16 +271,14 @@ p {
 .add-session-panel,
 .stat-card {
   border: 1px solid rgba(255, 255, 255, 0.11);
-  background: rgba(17, 23, 34, 0.88);
+  background: #070707;
   box-shadow: var(--shadow);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
 }
 
 .auth-panel {
-  width: min(420px, calc(100vw - 36px));
+  width: min(500px, calc(100vw - 36px));
   border-radius: 8px;
-  padding: 18px;
+  padding: clamp(18px, 4vw, 28px);
 }
 
 .segmented,
@@ -155,7 +287,7 @@ p {
   gap: 6px;
   padding: 5px;
   border: 1px solid var(--border);
-  background: #090f18;
+  background: #000;
   border-radius: 8px;
 }
 
@@ -199,15 +331,15 @@ input {
   min-height: 48px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: #0a1019;
+  background: #000;
   color: var(--text);
   padding: 0 13px;
   outline: none;
 }
 
 input:focus {
-  border-color: var(--accent-2);
-  box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.16);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.11);
 }
 
 textarea {
@@ -215,7 +347,7 @@ textarea {
   min-height: 84px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: #0a1019;
+  background: #000;
   color: var(--text);
   padding: 11px 13px;
   outline: none;
@@ -223,8 +355,8 @@ textarea {
 }
 
 textarea:focus {
-  border-color: var(--accent-2);
-  box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.16);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.11);
 }
 
 .primary-action,
@@ -234,15 +366,23 @@ textarea:focus {
   border: 0;
   border-radius: 8px;
   cursor: pointer;
-  color: #05100c;
+  color: #000;
   background: var(--accent);
   font-weight: 800;
+}
+
+.primary-action,
+.secondary-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
 }
 
 .secondary-action {
   border: 1px solid var(--border);
   color: var(--text);
-  background: #0a1019;
+  background: #000;
 }
 
 .tool-button,
@@ -251,7 +391,7 @@ textarea:focus {
   border: 1px solid var(--border);
   border-radius: 8px;
   color: var(--text);
-  background: #0a1019;
+  background: #000;
   cursor: pointer;
 }
 
@@ -309,7 +449,7 @@ textarea:focus {
   min-height: calc(100vh - 36px);
   border: 1px solid rgba(255, 255, 255, 0.11);
   border-radius: 8px;
-  background: rgba(17, 23, 34, 0.88);
+  background: #050505;
   box-shadow: var(--shadow);
   padding: 18px;
 }
@@ -338,7 +478,7 @@ textarea:focus {
   border: 1px solid var(--border);
   border-radius: 8px;
   color: var(--muted);
-  background: #0a1019;
+  background: #000;
   cursor: pointer;
   font-weight: 800;
 }
@@ -351,8 +491,8 @@ textarea:focus {
 .side-nav button.active,
 .mobile-nav button.active {
   color: var(--text);
-  border-color: rgba(49, 208, 143, 0.55);
-  background: rgba(49, 208, 143, 0.12);
+  border-color: var(--accent);
+  background: #151515;
 }
 
 .side-signout {
@@ -466,7 +606,7 @@ textarea:focus {
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 10px;
-  background: #0b111b;
+  background: #050505;
 }
 
 .calendar-day.outside {
@@ -474,17 +614,17 @@ textarea:focus {
 }
 
 .calendar-day.weekend {
-  background: #0a1019;
+  background: #020202;
 }
 
 .calendar-day.not-tracked {
   opacity: 0.58;
-  background: #0a1019;
+  background: #020202;
 }
 
 .calendar-day.logged-offday {
-  border-color: rgba(88, 166, 255, 0.45);
-  background: rgba(88, 166, 255, 0.08);
+  border-color: #5a5a5a;
+  background: #090909;
 }
 
 .calendar-day.holiday {
@@ -498,7 +638,7 @@ textarea:focus {
 
 .calendar-day.over,
 .calendar-day.on-target {
-  border-color: rgba(49, 208, 143, 0.42);
+  border-color: #e8e8e8;
 }
 
 .calendar-date-row {
@@ -570,7 +710,7 @@ textarea:focus {
   border: 1px solid var(--border);
   border-radius: 8px;
   color: var(--text);
-  background: #0a1019;
+  background: #000;
   padding: 0 9px;
   cursor: pointer;
 }
@@ -633,7 +773,7 @@ textarea:focus {
 
 .clock-button.logout {
   background: var(--danger);
-  color: #1b0505;
+  color: #000;
 }
 
 .clock-dot {
@@ -724,7 +864,7 @@ textarea:focus {
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 12px;
-  background: #0b111b;
+  background: #050505;
 }
 
 .report-summary strong {
@@ -742,7 +882,7 @@ textarea:focus {
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 14px;
-  background: #090f18;
+  background: #000;
   overflow-x: auto;
 }
 
@@ -758,7 +898,7 @@ textarea:focus {
 .bar {
   min-height: 5px;
   border-radius: 6px 6px 2px 2px;
-  background: linear-gradient(180deg, var(--accent), var(--accent-2));
+  background: var(--accent);
 }
 
 .bar-label,
@@ -788,7 +928,7 @@ textarea:focus {
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 10px;
-  background: #0b111b;
+  background: #050505;
 }
 
 .history-day-header {
@@ -827,7 +967,7 @@ textarea:focus {
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
   padding: 11px;
-  background: #090f18;
+  background: #000;
 }
 
 .history-item strong {
@@ -888,6 +1028,24 @@ textarea:focus {
 }
 
 @media (max-width: 860px) {
+  .home-screen {
+    grid-template-columns: 1fr;
+    align-content: start;
+    padding-top: 30px;
+  }
+
+  .home-copy h1 {
+    font-size: clamp(2.7rem, 13vw, 4.8rem);
+  }
+
+  .home-feature-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .home-action-panel {
+    width: min(520px, 100%);
+  }
+
   .dashboard-layout {
     grid-template-columns: 1fr;
   }
@@ -970,9 +1128,46 @@ textarea:focus {
     padding-right: 10px;
   }
 
+  .home-screen {
+    min-height: auto;
+    padding-top: 24px;
+  }
+
+  .brand-line {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .home-copy {
+    gap: 18px;
+  }
+
+  .home-copy h1 {
+    font-size: 2.65rem;
+    line-height: 1;
+  }
+
+  .home-description {
+    font-size: 1rem;
+  }
+
+  .home-feature-grid div {
+    min-height: 0;
+  }
+
+  .home-preview div {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
   .auth-screen {
-    place-content: start;
-    padding-top: 44px;
+    place-items: start stretch;
+    padding-top: 66px;
+  }
+
+  .back-home {
+    left: 10px;
   }
 
   .stats-grid,

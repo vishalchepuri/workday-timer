@@ -1,4 +1,4 @@
-const CACHE_NAME = "hourlog-react-static-v1";
+const CACHE_NAME = "hourlog-react-static-v2";
 const FILES = [
   "./",
   "./index.html",

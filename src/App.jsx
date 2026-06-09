@@ -1,4 +1,4 @@
-import { Download, LogOut, Pencil, Save, X } from "lucide-react";
+import { ArrowRight, CalendarDays, Download, LogIn, LogOut, Pencil, Save, ShieldCheck, Timer, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   clearCurrentUserId,
@@ -357,10 +357,74 @@ function buildMonthCalendar(date, sessions, settings) {
   return days;
 }
 
-function AuthScreen({ onSignIn, onSignUp, cloudAuthEnabled }) {
-  const [mode, setMode] = useState("signin");
+function HomeScreen({ onGetStarted, onSignIn }) {
+  return (
+    <main className="home-screen" aria-labelledby="home-title">
+      <section className="home-copy">
+        <div className="brand-line">
+          <div className="brand-mark compact" aria-hidden="true">
+            <span />
+          </div>
+          <p className="eyebrow">Office time tracker</p>
+        </div>
+        <h1 id="home-title">Track office hours without guesswork.</h1>
+        <p className="home-description">
+          HourLog records every login and logout session, adds repeated breaks correctly, and turns your daily work into
+          clean weekly, monthly, last 3 months, and custom reports.
+        </p>
+        <div className="home-feature-grid" aria-label="Application features">
+          <div>
+            <Timer aria-hidden="true" size={20} />
+            <span>Multiple work sessions per day</span>
+          </div>
+          <div>
+            <CalendarDays aria-hidden="true" size={20} />
+            <span>Month targets with holidays removed</span>
+          </div>
+          <div>
+            <ShieldCheck aria-hidden="true" size={20} />
+            <span>Secure cloud sync</span>
+          </div>
+        </div>
+      </section>
+
+      <aside className="home-action-panel" aria-label="Start using HourLog">
+        <div className="home-preview">
+          <div>
+            <span>Today</span>
+            <strong>06h 30m</strong>
+          </div>
+          <div>
+            <span>Breaks</span>
+            <strong>2 sessions</strong>
+          </div>
+          <div>
+            <span>Monthly target</span>
+            <strong>136h 30m</strong>
+          </div>
+        </div>
+        <button className="primary-action" type="button" onClick={onGetStarted}>
+          <span>Get started</span>
+          <ArrowRight aria-hidden="true" size={18} />
+        </button>
+        <button className="secondary-action" type="button" onClick={onSignIn}>
+          <LogIn aria-hidden="true" size={18} />
+          <span>Sign in</span>
+        </button>
+      </aside>
+    </main>
+  );
+}
+
+function AuthScreen({ onSignIn, onSignUp, cloudAuthEnabled, initialMode = "signin", onNavigateHome, onNavigateAuth }) {
+  const [mode, setMode] = useState(initialMode);
   const [message, setMessage] = useState("");
   const [pending, setPending] = useState(false);
+
+  useEffect(() => {
+    setMode(initialMode);
+    setMessage("");
+  }, [initialMode]);
 
   async function handleSignIn(event) {
     event.preventDefault();
@@ -382,17 +446,16 @@ function AuthScreen({ onSignIn, onSignUp, cloudAuthEnabled }) {
 
   return (
     <section className="auth-screen" aria-labelledby="auth-title">
-      <div className="auth-brand">
-        <div className="brand-mark" aria-hidden="true">
-          <span />
-        </div>
-        <div>
-          <p className="eyebrow">Office time tracker</p>
-          <h1 id="auth-title">HourLog</h1>
-        </div>
-      </div>
-
+      <button className="back-home" type="button" onClick={onNavigateHome}>
+        HourLog
+      </button>
       <div className="auth-panel">
+        <div className="auth-heading">
+          <p className="eyebrow">{mode === "signin" ? "Welcome back" : "Create workspace"}</p>
+          <h1 id="auth-title">{mode === "signin" ? "Sign in to HourLog" : "Start tracking hours"}</h1>
+          <p>{mode === "signin" ? "Use your secure account to continue." : "Create an account to sync your history."}</p>
+        </div>
+
         <div className="segmented" role="tablist" aria-label="Authentication mode">
           <button
             className={`segment ${mode === "signin" ? "active" : ""}`}
@@ -402,6 +465,7 @@ function AuthScreen({ onSignIn, onSignUp, cloudAuthEnabled }) {
             onClick={() => {
               setMode("signin");
               setMessage("");
+              onNavigateAuth("signin");
             }}
           >
             Sign in
@@ -414,6 +478,7 @@ function AuthScreen({ onSignIn, onSignUp, cloudAuthEnabled }) {
             onClick={() => {
               setMode("signup");
               setMessage("");
+              onNavigateAuth("signup");
             }}
           >
             Sign up
@@ -1245,12 +1310,25 @@ function Dashboard({ user, data, setData, onSignOut, cloudStatus }) {
   );
 }
 
+function getAppRoute() {
+  if (typeof window === "undefined") return "/";
+  const path = window.location.pathname;
+  if (path === "/signin" || path === "/signup" || path === "/app") return path;
+  return "/";
+}
+
 export default function App() {
   const [data, setData] = useState(readDatabase);
   const [currentUserId, setCurrentUserId] = useState(readCurrentUserId);
-  const [cloudStatus, setCloudStatus] = useState(isSupabaseConfigured ? "Supabase ready" : "Local demo mode");
+  const [cloudStatus, setCloudStatus] = useState(isSupabaseConfigured ? "Supabase ready" : "Supabase not configured");
+  const [route, setRoute] = useState(getAppRoute);
   const loadedCloudUsers = useRef(new Set());
   const user = useMemo(() => data.users.find((candidate) => candidate.id === currentUserId) || null, [data.users, currentUserId]);
+
+  function navigate(path) {
+    window.history.pushState({}, "", path);
+    setRoute(getAppRoute());
+  }
 
   async function loadCloudDataForUser(userId) {
     if (!supabase || loadedCloudUsers.current.has(userId)) return;
@@ -1341,6 +1419,14 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    function syncRoute() {
+      setRoute(getAppRoute());
+    }
+    window.addEventListener("popstate", syncRoute);
+    return () => window.removeEventListener("popstate", syncRoute);
+  }, []);
+
+  useEffect(() => {
     if (!supabase) return undefined;
     supabase.auth.getSession().then(({ data: sessionData }) => {
       if (sessionData.session?.user) ensureUser(sessionData.session.user);
@@ -1361,6 +1447,7 @@ export default function App() {
       const { data: authData, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) return error.message;
       if (authData.user) ensureUser(authData.user);
+      navigate("/app");
       return "";
     }
     const foundUser = data.users.find(
@@ -1369,6 +1456,7 @@ export default function App() {
     if (!foundUser) return "Email or password is incorrect.";
     writeCurrentUserId(foundUser.id);
     setCurrentUserId(foundUser.id);
+    navigate("/app");
     return "";
   }
 
@@ -1383,6 +1471,7 @@ export default function App() {
       });
       if (error) return error.message;
       if (authData.user) ensureUser(authData.user, name);
+      if (authData.session) navigate("/app");
       if (!authData.session) return "Account created. Please confirm your email if Supabase requires it, then sign in.";
       return "";
     }
@@ -1400,6 +1489,7 @@ export default function App() {
     setData(next);
     writeCurrentUserId(nextUser.id);
     setCurrentUserId(nextUser.id);
+    navigate("/app");
     return "";
   }
 
@@ -1407,14 +1497,26 @@ export default function App() {
     if (supabase) await supabase.auth.signOut();
     clearCurrentUserId();
     setCurrentUserId(null);
+    navigate("/signin");
   }
+
+  const authMode = route === "/signup" ? "signup" : "signin";
 
   return (
     <div className="app-shell">
       {user ? (
         <Dashboard user={user} data={data} setData={setData} onSignOut={signOut} cloudStatus={cloudStatus} />
+      ) : route === "/" ? (
+        <HomeScreen onGetStarted={() => navigate("/signup")} onSignIn={() => navigate("/signin")} />
       ) : (
-        <AuthScreen onSignIn={signIn} onSignUp={signUp} cloudAuthEnabled={isSupabaseConfigured} />
+        <AuthScreen
+          onSignIn={signIn}
+          onSignUp={signUp}
+          cloudAuthEnabled={isSupabaseConfigured}
+          initialMode={authMode}
+          onNavigateHome={() => navigate("/")}
+          onNavigateAuth={(mode) => navigate(mode === "signup" ? "/signup" : "/signin")}
+        />
       )}
     </div>
   );
