@@ -1,4 +1,19 @@
-import { ArrowRight, CalendarDays, Download, LogIn, LogOut, Pencil, Save, ShieldCheck, Timer, X } from "lucide-react";
+import {
+  Activity,
+  ArrowRight,
+  BarChart3,
+  CalendarDays,
+  Download,
+  ListChecks,
+  LogIn,
+  LogOut,
+  Pencil,
+  Save,
+  ShieldCheck,
+  Timer,
+  TrendingUp,
+  X,
+} from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   clearCurrentUserId,
@@ -196,6 +211,11 @@ function totalDuration(sessions, liveNow) {
   return sessions.reduce((total, session) => total + sessionDuration(session, liveNow), 0);
 }
 
+function formatPercent(value) {
+  if (!Number.isFinite(value)) return "0%";
+  return `${Math.round(Math.max(0, value) * 100)}%`;
+}
+
 function sessionsBetween(sessions, start, end) {
   return sessions.filter((session) => {
     const startTime = new Date(session.startTime);
@@ -252,6 +272,24 @@ function groupSessionsByDay(sessions) {
       };
     })
     .sort((a, b) => new Date(b.date) - new Date(a.date));
+}
+
+function currentWorkStreak(sessions, settings, today = new Date()) {
+  const loggedDays = new Set(sessions.map((session) => dayKey(new Date(session.startTime))));
+  const holidaySet = new Set((settings.holidays || []).map((holiday) => holiday.date));
+  let cursor = startOfDay(today);
+  let count = 0;
+  for (let index = 0; index < 90; index += 1) {
+    const key = dayKey(cursor);
+    if (!isWeekday(cursor) || holidaySet.has(key)) {
+      cursor = addDays(cursor, -1);
+      continue;
+    }
+    if (!loggedDays.has(key)) break;
+    count += 1;
+    cursor = addDays(cursor, -1);
+  }
+  return count;
 }
 
 function makeBuckets(range, sessions, start, end) {
@@ -358,6 +396,17 @@ function buildMonthCalendar(date, sessions, settings) {
 }
 
 function HomeScreen({ onGetStarted, onSignIn }) {
+  const workflowSteps = [
+    ["Clock in", "Start a session when work begins, then pause naturally for lunch or breaks."],
+    ["Clock out", "End each session separately so split days stay accurate."],
+    ["Review", "See daily, weekly, monthly, last 3 months, and custom reports."],
+  ];
+  const reportCards = [
+    ["Daily", "Today balance", "+0h 15m"],
+    ["Weekly", "Workdays", "5 days"],
+    ["Monthly", "Target left", "42h 10m"],
+  ];
+
   return (
     <main className="home-screen" aria-labelledby="home-title">
       <section className="home-copy">
@@ -386,6 +435,14 @@ function HomeScreen({ onGetStarted, onSignIn }) {
             <span>Secure cloud sync</span>
           </div>
         </div>
+        <div className="home-workflow" aria-label="How HourLog works">
+          {workflowSteps.map(([title, description], index) => (
+            <article style={{ "--step-index": index }} key={title}>
+              <strong>{title}</strong>
+              <span>{description}</span>
+            </article>
+          ))}
+        </div>
       </section>
 
       <aside className="home-action-panel" aria-label="Start using HourLog">
@@ -402,6 +459,20 @@ function HomeScreen({ onGetStarted, onSignIn }) {
             <span>Monthly target</span>
             <strong>136h 30m</strong>
           </div>
+        </div>
+        <div className="home-mini-chart" aria-label="Sample weekly progress">
+          {[62, 88, 54, 96, 76, 42, 70].map((height, index) => (
+            <span style={{ "--bar-height": `${height}%`, "--bar-index": index }} key={index} />
+          ))}
+        </div>
+        <div className="home-report-strip" aria-label="Available report examples">
+          {reportCards.map(([range, label, value]) => (
+            <div key={range}>
+              <span>{range}</span>
+              <strong>{value}</strong>
+              <small>{label}</small>
+            </div>
+          ))}
         </div>
         <button className="primary-action" type="button" onClick={onGetStarted}>
           <span>Get started</span>
@@ -577,6 +648,114 @@ function StatsGrid({ completedSessions, liveNow, settings }) {
           <strong>{value}</strong>
         </article>
       ))}
+    </section>
+  );
+}
+
+function InsightsPanel({ completedSessions, liveNow, settings }) {
+  const current = liveNow;
+  const monthStart = startOfMonth(current);
+  const monthEnd = endOfMonth(current);
+  const monthSessions = sessionsBetween(completedSessions, monthStart, current);
+  const monthTotal = totalDuration(monthSessions, liveNow);
+  const monthTarget = targetMillisecondsForRange(monthStart, monthEnd, settings);
+  const groupedDays = groupSessionsByDay(completedSessions);
+  const bestDay = groupedDays.reduce((best, day) => (!best || day.total > best.total ? day : best), null);
+  const longestSession = completedSessions.reduce((best, session) => {
+    if (!best || sessionDuration(session) > sessionDuration(best)) return session;
+    return best;
+  }, null);
+  const averageSession = completedSessions.length ? totalDuration(completedSessions, liveNow) / completedSessions.length : 0;
+  const streak = currentWorkStreak(completedSessions, settings, current);
+  const monthProgress = monthTarget > 0 ? monthTotal / monthTarget : 0;
+  const cards = [
+    {
+      icon: TrendingUp,
+      label: "Monthly progress",
+      value: formatPercent(monthProgress),
+      detail: `${formatDuration(monthTotal)} of ${formatDuration(monthTarget)}`,
+    },
+    {
+      icon: Activity,
+      label: "Current streak",
+      value: `${streak} ${streak === 1 ? "day" : "days"}`,
+      detail: "Completed tracked workdays in a row",
+    },
+    {
+      icon: Timer,
+      label: "Average session",
+      value: formatDuration(averageSession),
+      detail: `${completedSessions.length} completed sessions`,
+    },
+    {
+      icon: BarChart3,
+      label: "Best day",
+      value: bestDay ? formatDuration(bestDay.total) : "0h 00m",
+      detail: bestDay ? formatDate(bestDay.date) : "No completed sessions yet",
+    },
+    {
+      icon: ListChecks,
+      label: "Longest session",
+      value: longestSession ? formatDuration(sessionDuration(longestSession)) : "0h 00m",
+      detail: longestSession ? formatDate(new Date(longestSession.startTime)) : "No session data yet",
+    },
+  ];
+
+  return (
+    <section className="insights-panel" aria-label="Work insights">
+      <div className="section-header">
+        <div>
+          <p className="eyebrow">Insights</p>
+          <h2>Work patterns</h2>
+        </div>
+      </div>
+      <div className="insight-grid">
+        {cards.map(({ icon: Icon, label, value, detail }) => (
+          <article className="insight-card" key={label}>
+            <Icon aria-hidden="true" size={19} />
+            <span>{label}</span>
+            <strong>{value}</strong>
+            <small>{detail}</small>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function RecentTimeline({ completedSessions }) {
+  const recentDays = groupSessionsByDay(completedSessions).slice(0, 7);
+  const maxTotal = Math.max(...recentDays.map((day) => day.total), 1);
+
+  return (
+    <section className="timeline-panel" aria-label="Recent work timeline">
+      <div className="section-header">
+        <div>
+          <p className="eyebrow">Timeline</p>
+          <h2>Last logged days</h2>
+        </div>
+      </div>
+      {recentDays.length ? (
+        <div className="timeline-list">
+          {recentDays.map((day) => (
+            <article className="timeline-row" key={dayKey(day.date)}>
+              <div>
+                <strong>{formatDate(day.date)}</strong>
+                <span>
+                  {day.sessions.length} {day.sessions.length === 1 ? "session" : "sessions"}
+                  {day.breakCount ? `, ${day.breakCount} breaks` : ""}
+                </span>
+              </div>
+              <div className="timeline-meter" aria-hidden="true">
+                <span style={{ width: `${Math.max(6, (day.total / maxTotal) * 100)}%` }} />
+              </div>
+              <b>{formatDuration(day.total)}</b>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div className="empty-state">No completed days yet. Your timeline will appear after your first logout.</div>
+      )}
     </section>
   );
 }
@@ -1265,6 +1444,8 @@ function Dashboard({ user, data, setData, onSignOut, cloudStatus }) {
           <section className="dashboard-view">
             <ClockPanel activeSession={activeSession} liveNow={liveNow} onToggleClock={toggleClock} />
             <StatsGrid completedSessions={completedSessions} liveNow={liveNow} settings={settings} />
+            <InsightsPanel completedSessions={completedSessions} liveNow={liveNow} settings={settings} />
+            <RecentTimeline completedSessions={completedSessions} />
           </section>
         )}
 
