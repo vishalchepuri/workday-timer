@@ -32,47 +32,10 @@ export function createId(prefix) {
   return window.crypto?.randomUUID ? window.crypto.randomUUID() : `${prefix}-${Date.now()}`;
 }
 
-const seedUser = {
-  id: "user-demo",
-  name: "Demo User",
-  email: "demo@hourlog.app",
-  password: "password123",
-};
-
-const currentSeedDate = new Date();
-
-function hoursAgo(days, startHour, durationHours) {
-  const start = new Date(currentSeedDate);
-  start.setDate(currentSeedDate.getDate() - days);
-  start.setHours(startHour, 15, 0, 0);
-  const end = new Date(start.getTime() + durationHours * 60 * 60 * 1000);
-  return { startTime: start.toISOString(), endTime: end.toISOString() };
-}
-
-const seedSessions = [
-  hoursAgo(0, 9, 4.25),
-  hoursAgo(0, 14, 3.1),
-  hoursAgo(1, 9, 8.1),
-  hoursAgo(1, 18, 1.2),
-  hoursAgo(2, 10, 7.35),
-  hoursAgo(4, 9, 8.4),
-  hoursAgo(7, 9, 7.85),
-  hoursAgo(12, 10, 8.0),
-  hoursAgo(18, 9, 8.25),
-  hoursAgo(26, 9, 7.6),
-  hoursAgo(39, 10, 8.2),
-  hoursAgo(58, 9, 7.9),
-  hoursAgo(73, 9, 8.15),
-].map((session, index) => ({
-  id: `seed-${index + 1}`,
-  userId: seedUser.id,
-  ...session,
-}));
-
 export function readDatabase() {
   const raw = storageGet(STORAGE_KEY);
   if (raw) return JSON.parse(raw);
-  const data = { users: [seedUser], sessions: seedSessions };
+  const data = { users: [], sessions: [] };
   writeDatabase(data);
   return data;
 }

@@ -433,19 +433,6 @@ function AuthScreen({ onSignIn, onSignUp, cloudAuthEnabled }) {
             <button className="primary-action" type="submit" disabled={pending}>
               {pending ? "Signing in..." : "Sign in"}
             </button>
-            <button
-              className="secondary-action"
-              type="button"
-              disabled={pending}
-              onClick={async () => {
-                setPending(true);
-                const error = await onSignIn("demo@hourlog.app", "password123");
-                setMessage(error || "");
-                setPending(false);
-              }}
-            >
-              Use demo account
-            </button>
           </form>
         ) : (
           <form className="auth-form" onSubmit={handleSignUp}>
@@ -468,7 +455,7 @@ function AuthScreen({ onSignIn, onSignUp, cloudAuthEnabled }) {
         )}
 
         <p className="form-message" role="status" aria-live="polite">
-          {message || (cloudAuthEnabled ? "Supabase auth is enabled." : "Using local prototype auth.")}
+          {message || (cloudAuthEnabled ? "Secure cloud account required." : "Supabase is not configured.")}
         </p>
       </div>
     </section>
@@ -1370,8 +1357,7 @@ export default function App() {
   }, []);
 
   async function signIn(email, password) {
-    const isDemo = email.toLowerCase() === "demo@hourlog.app";
-    if (supabase && !isDemo) {
+    if (supabase) {
       const { data: authData, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) return error.message;
       if (authData.user) ensureUser(authData.user);
