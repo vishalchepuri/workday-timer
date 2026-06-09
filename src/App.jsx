@@ -589,6 +589,7 @@ function AuthScreen({ onSignIn, onSignUp, cloudAuthEnabled, initialMode = "signi
             <button className="primary-action" type="submit" disabled={pending}>
               {pending ? "Creating..." : "Create account"}
             </button>
+            <p className="auth-hint">If you already created this account, switch to Sign in instead of requesting another email.</p>
           </form>
         )}
 
@@ -1688,6 +1689,19 @@ function getAppRoute() {
   return "/";
 }
 
+function isEmailRateLimitError(error) {
+  const message = `${error?.message || ""} ${error?.code || ""}`.toLowerCase();
+  return message.includes("email rate limit") || message.includes("rate limit");
+}
+
+function friendlyAuthError(error) {
+  if (!error) return "";
+  if (isEmailRateLimitError(error)) {
+    return "Too many confirmation emails were requested. Please wait a few minutes, then sign in or try again.";
+  }
+  return error.message || "Authentication failed. Please try again.";
+}
+
 export default function App() {
   const [data, setData] = useState(readDatabase);
   const [currentUserId, setCurrentUserId] = useState(readCurrentUserId);
@@ -1820,7 +1834,7 @@ export default function App() {
   async function signIn(email, password) {
     if (supabase) {
       const { data: authData, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) return error.message;
+      if (error) return friendlyAuthError(error);
       if (authData.user) ensureUser(authData.user);
       navigate("/app");
       return "";
@@ -1844,7 +1858,17 @@ export default function App() {
           data: { name },
         },
       });
-      if (error) return error.message;
+      if (error) {
+        if (isEmailRateLimitError(error)) {
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+          if (!signInError && signInData.user) {
+            ensureUser(signInData.user, name);
+            navigate("/app");
+            return "";
+          }
+        }
+        return friendlyAuthError(error);
+      }
       if (authData.user) ensureUser(authData.user, name);
       if (authData.session) navigate("/app");
       if (!authData.session) return "Account created. Please confirm your email if Supabase requires it, then sign in.";
