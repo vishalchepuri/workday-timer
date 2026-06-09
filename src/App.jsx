@@ -592,8 +592,8 @@ function AuthScreen({ onSignIn, onSignUp, cloudAuthEnabled, initialMode = "signi
           </form>
         )}
 
-        <p className="form-message" role="status" aria-live="polite">
-          {message || (cloudAuthEnabled ? "Secure cloud account required." : "Supabase is not configured.")}
+        <p className={`form-message ${message ? "" : "neutral"}`} role="status" aria-live="polite">
+          {message || (cloudAuthEnabled ? "Secure cloud sync is ready." : "Supabase is not configured.")}
         </p>
       </div>
     </section>

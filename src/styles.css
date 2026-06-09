@@ -504,6 +504,10 @@ textarea:focus {
   font-size: 0.86rem;
 }
 
+.form-message.neutral {
+  color: var(--muted);
+}
+
 .form-message.compact {
   min-height: 0;
   margin: 2px 0;
