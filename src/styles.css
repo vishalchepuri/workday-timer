@@ -295,6 +295,7 @@ button {
   min-height: calc(100vh - 38px);
   display: grid;
   place-items: center;
+  padding: 58px 0 24px;
 }
 
 .back-home {
@@ -326,14 +327,16 @@ p {
 
 .auth-heading {
   display: grid;
-  gap: 8px;
-  margin-bottom: 18px;
+  gap: 7px;
+  margin-bottom: 16px;
 }
 
 .auth-heading h1 {
   margin-bottom: 0;
-  font-size: clamp(1.9rem, 6vw, 2.65rem);
-  line-height: 1.05;
+  max-width: 12ch;
+  font-size: clamp(2rem, 5vw, 3rem);
+  line-height: 1;
+  overflow-wrap: anywhere;
 }
 
 .auth-heading p {
@@ -355,9 +358,9 @@ p {
 }
 
 .auth-panel {
-  width: min(500px, calc(100vw - 36px));
+  width: min(480px, calc(100vw - 36px));
   border-radius: 8px;
-  padding: clamp(18px, 4vw, 28px);
+  padding: clamp(18px, 3vw, 26px);
 }
 
 .segmented,
@@ -393,8 +396,8 @@ p {
 
 .auth-form {
   display: grid;
-  gap: 14px;
-  margin-top: 18px;
+  gap: 13px;
+  margin-top: 16px;
 }
 
 label {
@@ -407,7 +410,7 @@ label {
 
 input {
   width: 100%;
-  min-height: 48px;
+  min-height: 46px;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: #000;
@@ -441,7 +444,7 @@ textarea:focus {
 .primary-action,
 .secondary-action,
 .clock-button {
-  min-height: 50px;
+  min-height: 48px;
   border: 0;
   border-radius: 8px;
   cursor: pointer;
@@ -496,9 +499,9 @@ textarea:focus {
 
 .form-message {
   min-height: 22px;
-  margin: 13px 0 0;
+  margin: 12px 0 0;
   color: var(--warning);
-  font-size: 0.9rem;
+  font-size: 0.86rem;
 }
 
 .form-message.compact {
@@ -1345,6 +1348,41 @@ textarea:focus {
   }
 }
 
+@media (max-height: 760px) and (min-width: 561px) {
+  .auth-screen {
+    align-items: start;
+    padding-top: 6px;
+  }
+
+  .auth-panel {
+    width: min(625px, calc(100vw - 96px));
+    padding: 22px 34px;
+  }
+
+  .auth-heading {
+    margin-bottom: 14px;
+  }
+
+  .auth-heading h1 {
+    max-width: none;
+    font-size: clamp(2.2rem, 5vw, 3.35rem);
+  }
+
+  .auth-form {
+    gap: 12px;
+    margin-top: 14px;
+  }
+
+  input {
+    min-height: 44px;
+  }
+
+  .primary-action,
+  .secondary-action {
+    min-height: 46px;
+  }
+}
+
 @media (max-width: 860px) {
   .home-screen {
     grid-template-columns: 1fr;
@@ -1505,11 +1543,33 @@ textarea:focus {
 
   .auth-screen {
     place-items: start stretch;
-    padding-top: 66px;
+    padding-top: 64px;
   }
 
   .back-home {
     left: 10px;
+  }
+
+  .auth-panel {
+    width: 100%;
+    padding: 16px;
+  }
+
+  .auth-heading h1 {
+    max-width: 11ch;
+    font-size: 2.25rem;
+  }
+
+  .auth-heading p {
+    font-size: 0.95rem;
+  }
+
+  .segmented {
+    gap: 4px;
+  }
+
+  .segment {
+    min-height: 40px;
   }
 
   .stats-grid,
