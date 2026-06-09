@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 const root = process.cwd();
 const dist = resolve(root, "dist");
 const env = {};
+const buildId = Date.now().toString(36);
 
 async function loadEnvFile(fileName) {
   try {
@@ -26,6 +27,10 @@ async function loadEnvFile(fileName) {
 await loadEnvFile(".env");
 await loadEnvFile(".env.local");
 
+function envValue(key) {
+  return process.env[key] || env[key] || "";
+}
+
 await rm(dist, { recursive: true, force: true });
 await mkdir(resolve(dist, "assets"), { recursive: true });
 
@@ -42,10 +47,10 @@ await build({
     ".jsx": "jsx",
   },
   define: {
-    "import.meta.env.NEXT_PUBLIC_SUPABASE_URL": JSON.stringify(env.NEXT_PUBLIC_SUPABASE_URL || ""),
-    "import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || ""),
-    "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(env.VITE_SUPABASE_URL || ""),
-    "import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(env.VITE_SUPABASE_PUBLISHABLE_KEY || ""),
+    "import.meta.env.NEXT_PUBLIC_SUPABASE_URL": JSON.stringify(envValue("NEXT_PUBLIC_SUPABASE_URL")),
+    "import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(envValue("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY")),
+    "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(envValue("VITE_SUPABASE_URL")),
+    "import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(envValue("VITE_SUPABASE_PUBLISHABLE_KEY")),
   },
   jsx: "automatic",
 });
@@ -59,7 +64,7 @@ await writeFile(
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#080b12" />
+    <meta name="theme-color" content="#000000" />
     <meta name="color-scheme" content="dark" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -70,8 +75,8 @@ await writeFile(
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="apple-touch-icon" href="apple-touch-icon.png" />
     <link rel="icon" href="icon.svg" />
-    <link rel="stylesheet" href="assets/app.css" />
-    <script defer src="assets/app.js"></script>
+    <link rel="stylesheet" href="assets/app.css?v=${buildId}" />
+    <script defer src="assets/app.js?v=${buildId}"></script>
   </head>
   <body>
     <div id="root"></div>
