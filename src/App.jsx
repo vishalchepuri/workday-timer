@@ -527,7 +527,6 @@ function HomeScreen({ onGetStarted, onSignIn }) {
 function AuthScreen({
   onSignIn,
   onSignUp,
-  onVerifySignupOtp,
   onResetPassword,
   cloudAuthEnabled,
   initialMode = "signin",
@@ -538,12 +537,10 @@ function AuthScreen({
   const [message, setMessage] = useState("");
   const [pending, setPending] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
-  const [signupOtpEmail, setSignupOtpEmail] = useState("");
 
   useEffect(() => {
     setMode(initialMode);
     setResetOpen(false);
-    setSignupOtpEmail("");
     setMessage("");
   }, [initialMode]);
 
@@ -570,21 +567,7 @@ function AuthScreen({
     setPending(true);
     const form = new FormData(event.currentTarget);
     const result = await onSignUp(String(form.get("name")), String(form.get("email")), String(form.get("password")));
-    if (result?.needsOtp) {
-      setSignupOtpEmail(result.email);
-      setMessage(result.message);
-    } else {
-      setMessage(result?.message || result || "");
-    }
-    setPending(false);
-  }
-
-  async function handleVerifySignupOtp(event) {
-    event.preventDefault();
-    setPending(true);
-    const form = new FormData(event.currentTarget);
-    const error = await onVerifySignupOtp(signupOtpEmail, String(form.get("signupOtp")));
-    setMessage(error || "");
+    setMessage(result?.message || result || "");
     setPending(false);
   }
 
@@ -678,30 +661,6 @@ function AuthScreen({
               </form>
             )}
           </div>
-        ) : signupOtpEmail ? (
-          <form className="auth-form" onSubmit={handleVerifySignupOtp}>
-            <label>
-              <span>Email</span>
-              <input value={signupOtpEmail} disabled />
-            </label>
-            <label>
-              <span>Verification code</span>
-              <input name="signupOtp" inputMode="numeric" autoComplete="one-time-code" placeholder="Enter OTP from email" required />
-            </label>
-            <button className="primary-action" type="submit" disabled={pending}>
-              {pending ? "Verifying..." : "Verify account"}
-            </button>
-            <button
-              className="text-action"
-              type="button"
-              onClick={() => {
-                setSignupOtpEmail("");
-                setMessage("");
-              }}
-            >
-              Use a different email
-            </button>
-          </form>
         ) : (
           <form className="auth-form" onSubmit={handleSignUp}>
             <label>
@@ -719,7 +678,7 @@ function AuthScreen({
             <button className="primary-action" type="submit" disabled={pending}>
               {pending ? "Creating..." : "Create account"}
             </button>
-            <p className="auth-hint">After creating the account, enter the OTP from your email here to verify.</p>
+            <p className="auth-hint">After creating the account, confirm your email if Supabase asks, then sign in.</p>
           </form>
         )}
 
@@ -2377,11 +2336,7 @@ export default function App() {
         navigate("/app");
         return "";
       }
-      return {
-        needsOtp: true,
-        email,
-        message: "Account created. Enter the OTP sent to your email to verify and sign in.",
-      };
+      return { message: "Account created. Please confirm your email if Supabase requires it, then sign in." };
     }
     if (data.users.some((candidate) => candidate.email.toLowerCase() === email.toLowerCase())) {
       return "This email already has an account.";
@@ -2397,19 +2352,6 @@ export default function App() {
     setData(next);
     writeCurrentUserId(nextUser.id);
     setCurrentUserId(nextUser.id);
-    navigate("/app");
-    return "";
-  }
-
-  async function verifySignupOtp(email, token) {
-    if (!supabase) return "Supabase is not configured.";
-    const { data: authData, error } = await supabase.auth.verifyOtp({
-      email,
-      token,
-      type: "signup",
-    });
-    if (error) return friendlyAuthError(error);
-    if (authData.user) ensureUser(authData.user);
     navigate("/app");
     return "";
   }
@@ -2460,7 +2402,6 @@ export default function App() {
         <AuthScreen
           onSignIn={signIn}
           onSignUp={signUp}
-          onVerifySignupOtp={verifySignupOtp}
           onResetPassword={resetPassword}
           cloudAuthEnabled={isSupabaseConfigured}
           initialMode={authMode}
