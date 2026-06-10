@@ -10,8 +10,11 @@ import {
   Pencil,
   Save,
   ShieldCheck,
+  Smartphone,
   Timer,
+  Trash2,
   TrendingUp,
+  User,
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -31,6 +34,7 @@ import {
   upsertRemoteHoliday,
   upsertRemoteSession,
   upsertRemoteSettings,
+  deleteRemoteSession,
 } from "./lib/supabaseData.js";
 import { adminEmail, isSupabaseConfigured, supabase } from "./lib/supabaseClient.js";
 
@@ -130,6 +134,7 @@ function sessionDuration(session, liveNow = new Date()) {
 function getUserSettings(data, userId) {
   const saved = data.settings?.[userId];
   const currentMonth = monthKey(new Date());
+  const currentTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "Local";
   const normalizeHolidays = (holidays = []) =>
     holidays
       .map((holiday) =>
@@ -142,6 +147,7 @@ function getUserSettings(data, userId) {
     return {
       dailyTargetHours: 6.5,
       trackingStartMonth: currentMonth,
+      timezone: currentTimezone,
       ...saved,
       holidays: normalizeHolidays(saved.holidays),
     };
@@ -151,6 +157,7 @@ function getUserSettings(data, userId) {
     targetVersion: 2,
     holidays: normalizeHolidays(saved?.holidays),
     trackingStartMonth: saved?.trackingStartMonth || currentMonth,
+    timezone: saved?.timezone || currentTimezone,
   };
 }
 
@@ -786,6 +793,55 @@ function PasswordResetScreen({ onUpdatePassword, onSignOut }) {
   );
 }
 
+function InstallPrompt() {
+  const [installEvent, setInstallEvent] = useState(null);
+  const [dismissed, setDismissed] = useState(() => window.localStorage?.getItem("hourlog_install_dismissed") === "1");
+  const isStandalone =
+    window.matchMedia?.("(display-mode: standalone)")?.matches || window.navigator?.standalone === true;
+  const isIOS = /iphone|ipad|ipod/i.test(window.navigator?.userAgent || "");
+
+  useEffect(() => {
+    function handleBeforeInstallPrompt(event) {
+      event.preventDefault();
+      setInstallEvent(event);
+    }
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    return () => window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+  }, []);
+
+  if (dismissed || isStandalone || (!installEvent && !isIOS)) return null;
+
+  async function installApp() {
+    if (!installEvent) return;
+    installEvent.prompt();
+    await installEvent.userChoice.catch(() => {});
+    setInstallEvent(null);
+  }
+
+  function dismiss() {
+    setDismissed(true);
+    window.localStorage?.setItem("hourlog_install_dismissed", "1");
+  }
+
+  return (
+    <section className="install-prompt" aria-label="Install app">
+      <Smartphone aria-hidden="true" size={18} />
+      <div>
+        <strong>Install HourLog</strong>
+        <span>{isIOS ? "Use Safari Share, then Add to Home Screen." : "Keep the tracker on your home screen."}</span>
+      </div>
+      {installEvent && (
+        <button className="tool-button" type="button" onClick={installApp}>
+          Install
+        </button>
+      )}
+      <button className="icon-mini" type="button" aria-label="Dismiss install prompt" onClick={dismiss}>
+        <X aria-hidden="true" size={14} />
+      </button>
+    </section>
+  );
+}
+
 function ClockPanel({ activeSession, liveNow, onToggleClock }) {
   const isActive = Boolean(activeSession);
   const elapsed = activeSession ? liveNow.getTime() - new Date(activeSession.startTime).getTime() : 0;
@@ -836,6 +892,33 @@ function StatsGrid({ completedSessions, liveNow, settings }) {
           <strong>{value}</strong>
         </article>
       ))}
+    </section>
+  );
+}
+
+function MonthlyBalanceAlert({ completedSessions, liveNow, settings }) {
+  const monthStart = startOfMonth(liveNow);
+  const monthEnd = endOfMonth(liveNow);
+  const monthSessions = sessionsBetween(completedSessions, monthStart, liveNow);
+  const monthTotal = totalDuration(monthSessions, liveNow);
+  const monthTarget = targetMillisecondsForRange(monthStart, monthEnd, settings);
+  const balance = monthTotal - monthTarget;
+  const message =
+    Math.abs(balance) < 60000
+      ? "You are exactly on this month’s target."
+      : balance >= 0
+        ? `You are ahead by ${formatDuration(balance)} this month.`
+        : `You need ${formatDuration(Math.abs(balance))} more this month.`;
+
+  return (
+    <section className={`balance-alert ${balance >= 0 ? "ahead" : "behind"}`} aria-label="Monthly target alert">
+      <TrendingUp aria-hidden="true" size={20} />
+      <div>
+        <strong>{message}</strong>
+        <span>
+          Completed {formatDuration(monthTotal)} of {formatDuration(monthTarget)} target.
+        </span>
+      </div>
     </section>
   );
 }
@@ -1158,6 +1241,7 @@ function AdminPortal({ isAdmin }) {
 function TargetSettings({ settings, selectedMonth, onSelectMonth, onUpdateTarget, onUpdateTrackingStart, onAddHoliday, onRemoveHoliday }) {
   const [holidayDate, setHolidayDate] = useState(dayKey(new Date()));
   const [holidayReason, setHolidayReason] = useState("");
+  const [editingHolidayDate, setEditingHolidayDate] = useState("");
   const selectedMonthDate = monthStartFromKey(selectedMonth);
   const selectedMonthStart = startOfMonth(selectedMonthDate);
   const selectedMonthEnd = endOfMonth(selectedMonthDate);
@@ -1211,19 +1295,43 @@ function TargetSettings({ settings, selectedMonth, onSelectMonth, onUpdateTarget
             onClick={() => {
               onAddHoliday(holidayDate, holidayReason);
               setHolidayReason("");
+              setEditingHolidayDate("");
             }}
           >
-            Add
+            {editingHolidayDate ? "Save" : "Add"}
           </button>
+          {editingHolidayDate && (
+            <button
+              className="tool-button ghost"
+              type="button"
+              onClick={() => {
+                setEditingHolidayDate("");
+                setHolidayReason("");
+              }}
+            >
+              Cancel
+            </button>
+          )}
         </div>
         {sortedHolidays.length > 0 && (
           <div className="holiday-list">
             {sortedHolidays.map((holiday) => (
-              <button className="holiday-chip" type="button" key={holiday.date} onClick={() => onRemoveHoliday(holiday.date)}>
-                {holiday.date}
-                {holiday.reason && <span>{holiday.reason}</span>}
-                <X aria-hidden="true" size={13} />
-              </button>
+              <div className="holiday-chip" key={holiday.date}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingHolidayDate(holiday.date);
+                    setHolidayDate(holiday.date);
+                    setHolidayReason(holiday.reason || "");
+                  }}
+                >
+                  <span>{holiday.date}</span>
+                  {holiday.reason && <small>{holiday.reason}</small>}
+                </button>
+                <button type="button" aria-label={`Remove holiday ${holiday.date}`} onClick={() => onRemoveHoliday(holiday.date)}>
+                  <X aria-hidden="true" size={13} />
+                </button>
+              </div>
             ))}
           </div>
         )}
@@ -1408,7 +1516,7 @@ function ReportsPanel({ completedSessions, settings, selectedMonth }) {
   );
 }
 
-function HistoryPanel({ completedSessions, onUpdateSession }) {
+function HistoryPanel({ completedSessions, onUpdateSession, onDeleteSession }) {
   const groups = groupSessionsByDay(completedSessions).slice(0, 18);
   const [editingId, setEditingId] = useState(null);
   const [draft, setDraft] = useState({ startTime: "", endTime: "", note: "" });
@@ -1534,6 +1642,16 @@ function HistoryPanel({ completedSessions, onUpdateSession }) {
                           <button className="icon-mini" type="button" onClick={() => startEdit(session)} aria-label="Edit session">
                             <Pencil aria-hidden="true" size={15} />
                           </button>
+                          <button
+                            className="icon-mini danger"
+                            type="button"
+                            onClick={() => {
+                              if (window.confirm("Delete this session? This cannot be undone.")) onDeleteSession(session.id);
+                            }}
+                            aria-label="Delete session"
+                          >
+                            <Trash2 aria-hidden="true" size={15} />
+                          </button>
                         </div>
                       </>
                     )}
@@ -1625,6 +1743,93 @@ function AddSessionPanel({ selectedMonth, onAddSession }) {
           {message && <p className="form-message compact">{message}</p>}
         </div>
       </form>
+    </section>
+  );
+}
+
+function ProfileSettings({ user, settings, onUpdateProfile, onUpdateSettings }) {
+  const [name, setName] = useState(user.name);
+  const [dailyTargetHours, setDailyTargetHours] = useState(settings.dailyTargetHours);
+  const [trackingStartMonth, setTrackingStartMonth] = useState(settings.trackingStartMonth);
+  const [timezone, setTimezone] = useState(settings.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "Local");
+  const [message, setMessage] = useState("");
+  const timezoneOptions = [
+    timezone,
+    Intl.DateTimeFormat().resolvedOptions().timeZone,
+    "Asia/Calcutta",
+    "UTC",
+    "America/New_York",
+    "Europe/London",
+    "Asia/Dubai",
+    "Asia/Singapore",
+  ].filter((value, index, list) => value && list.indexOf(value) === index);
+
+  useEffect(() => {
+    setName(user.name);
+    setDailyTargetHours(settings.dailyTargetHours);
+    setTrackingStartMonth(settings.trackingStartMonth);
+    setTimezone(settings.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "Local");
+  }, [user.name, settings.dailyTargetHours, settings.trackingStartMonth, settings.timezone]);
+
+  function saveProfile(event) {
+    event.preventDefault();
+    onUpdateProfile(name.trim() || user.name);
+    onUpdateSettings({
+      dailyTargetHours: Number(dailyTargetHours),
+      trackingStartMonth,
+      timezone,
+    });
+    setMessage("Profile settings saved.");
+  }
+
+  return (
+    <section className="profile-panel" aria-label="Profile settings">
+      <div className="section-header">
+        <div>
+          <p className="eyebrow">Profile</p>
+          <h2>Account settings</h2>
+          <p className="muted">Update your name, target defaults, tracking start, and timezone preference.</p>
+        </div>
+      </div>
+      <form className="profile-form" onSubmit={saveProfile}>
+        <label>
+          <span>Name</span>
+          <input value={name} onChange={(event) => setName(event.target.value)} required />
+        </label>
+        <label>
+          <span>Email</span>
+          <input value={user.email} disabled />
+        </label>
+        <label>
+          <span>Default hours per day</span>
+          <input
+            type="number"
+            min="1"
+            max="24"
+            step="0.25"
+            value={dailyTargetHours}
+            onChange={(event) => setDailyTargetHours(event.target.value)}
+          />
+        </label>
+        <label>
+          <span>Tracking starts</span>
+          <input type="month" value={trackingStartMonth} onChange={(event) => setTrackingStartMonth(event.target.value)} />
+        </label>
+        <label>
+          <span>Timezone</span>
+          <select value={timezone} onChange={(event) => setTimezone(event.target.value)}>
+            {timezoneOptions.map((option) => (
+              <option value={option} key={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button className="primary-action" type="submit">
+          Save settings
+        </button>
+      </form>
+      {message && <p className="form-message compact">{message}</p>}
     </section>
   );
 }
@@ -1732,6 +1937,52 @@ function Dashboard({ user, data, setData, onSignOut, cloudStatus, isAdmin, initi
     syncCloud(() => upsertRemoteSettings(user.id, nextSettings));
   }
 
+  function updateSettings(partialSettings) {
+    const dailyTargetHours = Number(partialSettings.dailyTargetHours ?? settings.dailyTargetHours);
+    const nextSettings = {
+      ...settings,
+      ...partialSettings,
+      dailyTargetHours: Number.isFinite(dailyTargetHours) ? Math.min(24, Math.max(1, dailyTargetHours)) : 6.5,
+      trackingStartMonth: partialSettings.trackingStartMonth || settings.trackingStartMonth,
+      timezone: partialSettings.timezone || settings.timezone,
+      targetVersion: 2,
+    };
+    setData((current) => {
+      const next = {
+        ...current,
+        settings: {
+          ...(current.settings || {}),
+          [user.id]: nextSettings,
+        },
+      };
+      writeDatabase(next);
+      return next;
+    });
+    syncCloud(() => upsertRemoteSettings(user.id, nextSettings));
+  }
+
+  function updateProfile(name) {
+    const nextName = name.trim() || user.name;
+    setData((current) => {
+      const next = {
+        ...current,
+        users: current.users.map((candidate) => (candidate.id === user.id ? { ...candidate, name: nextName } : candidate)),
+      };
+      writeDatabase(next);
+      return next;
+    });
+    syncCloud(() =>
+      upsertRemoteProfile(
+        {
+          id: user.id,
+          email: user.email,
+          user_metadata: { name: nextName },
+        },
+        nextName
+      )
+    );
+  }
+
   function updateHolidays(updater) {
     setData((current) => {
       const currentSettings = getUserSettings(current, user.id);
@@ -1782,6 +2033,18 @@ function Dashboard({ user, data, setData, onSignOut, cloudStatus, isAdmin, initi
     if (remoteSession) syncCloud(() => upsertRemoteSession(user.id, remoteSession));
   }
 
+  function deleteSession(sessionId) {
+    setData((current) => {
+      const next = {
+        ...current,
+        sessions: current.sessions.filter((session) => session.id !== sessionId),
+      };
+      writeDatabase(next);
+      return next;
+    });
+    syncCloud(() => deleteRemoteSession(user.id, sessionId));
+  }
+
   function addManualSession(session) {
     const manualSession = {
       id: createId("session"),
@@ -1806,6 +2069,7 @@ function Dashboard({ user, data, setData, onSignOut, cloudStatus, isAdmin, initi
     { id: "reports", label: "Reports" },
     { id: "history", label: "History" },
     { id: "manual", label: "Manual" },
+    { id: "settings", label: "Settings" },
     ...(isAdmin ? [{ id: "admin", label: "Admin" }] : []),
   ];
 
@@ -1864,7 +2128,9 @@ function Dashboard({ user, data, setData, onSignOut, cloudStatus, isAdmin, initi
 
         {activeView === "overview" && (
           <section className="dashboard-view">
+            <InstallPrompt />
             <ClockPanel activeSession={activeSession} liveNow={liveNow} onToggleClock={toggleClock} />
+            <MonthlyBalanceAlert completedSessions={completedSessions} liveNow={liveNow} settings={settings} />
             <StatsGrid completedSessions={completedSessions} liveNow={liveNow} settings={settings} />
             <InsightsPanel completedSessions={completedSessions} liveNow={liveNow} settings={settings} />
             <RecentTimeline completedSessions={completedSessions} />
@@ -1899,13 +2165,19 @@ function Dashboard({ user, data, setData, onSignOut, cloudStatus, isAdmin, initi
 
         {activeView === "history" && (
           <section className="dashboard-view">
-            <HistoryPanel completedSessions={completedSessions} onUpdateSession={updateSession} />
+            <HistoryPanel completedSessions={completedSessions} onUpdateSession={updateSession} onDeleteSession={deleteSession} />
           </section>
         )}
 
         {activeView === "manual" && (
           <section className="dashboard-view">
             <AddSessionPanel selectedMonth={selectedMonth} onAddSession={addManualSession} />
+          </section>
+        )}
+
+        {activeView === "settings" && (
+          <section className="dashboard-view">
+            <ProfileSettings user={user} settings={settings} onUpdateProfile={updateProfile} onUpdateSettings={updateSettings} />
           </section>
         )}
 

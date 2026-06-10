@@ -20,6 +20,7 @@ create table if not exists public.hourlog_settings (
   user_id uuid primary key references auth.users(id) on delete cascade,
   daily_target_hours numeric not null default 6.5,
   tracking_start_month text not null default to_char(now(), 'YYYY-MM'),
+  timezone text not null default 'Local',
   target_version integer not null default 2,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -38,6 +39,9 @@ create table if not exists public.hourlog_admins (
   email text primary key,
   created_at timestamptz not null default now()
 );
+
+alter table public.hourlog_settings
+  add column if not exists timezone text not null default 'Local';
 
 alter table public.hourlog_sessions enable row level security;
 alter table public.hourlog_profiles enable row level security;

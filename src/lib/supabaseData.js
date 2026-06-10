@@ -35,9 +35,11 @@ function toAppProfile(row) {
 
 function toAppSettings(settingsRow, holidayRows) {
   const currentMonth = new Date().toISOString().slice(0, 7);
+  const currentTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "Local";
   return {
     dailyTargetHours: Number(settingsRow?.daily_target_hours ?? 6.5),
     trackingStartMonth: settingsRow?.tracking_start_month || currentMonth,
+    timezone: settingsRow?.timezone || currentTimezone,
     targetVersion: Number(settingsRow?.target_version ?? 2),
     holidays: holidayRows.map((holiday) => ({
       date: holiday.holiday_date,
@@ -69,7 +71,7 @@ export async function fetchHourLogData(userId) {
     supabase.from("hourlog_sessions").select("id,user_id,start_time,end_time,note").eq("user_id", userId).order("start_time"),
     supabase
       .from("hourlog_settings")
-      .select("daily_target_hours,tracking_start_month,target_version")
+      .select("daily_target_hours,tracking_start_month,timezone,target_version")
       .eq("user_id", userId)
       .maybeSingle(),
     supabase.from("hourlog_holidays").select("holiday_date,reason").eq("user_id", userId).order("holiday_date"),
@@ -93,6 +95,7 @@ export async function upsertRemoteSettings(userId, settings) {
       user_id: userId,
       daily_target_hours: settings.dailyTargetHours,
       tracking_start_month: settings.trackingStartMonth,
+      timezone: settings.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "Local",
       target_version: 2,
       updated_at: new Date().toISOString(),
     },
@@ -104,6 +107,12 @@ export async function upsertRemoteSettings(userId, settings) {
 export async function upsertRemoteSession(userId, session) {
   if (!supabase) return;
   const { error } = await supabase.from("hourlog_sessions").upsert(toSessionRow(userId, session), { onConflict: "id" });
+  throwIfError(error);
+}
+
+export async function deleteRemoteSession(userId, sessionId) {
+  if (!supabase) return;
+  const { error } = await supabase.from("hourlog_sessions").delete().eq("user_id", userId).eq("id", sessionId);
   throwIfError(error);
 }
 
@@ -132,7 +141,7 @@ export async function fetchAdminHourLogData() {
   const [profilesResult, sessionsResult, settingsResult, holidaysResult] = await Promise.all([
     supabase.from("hourlog_profiles").select("user_id,email,name").order("name"),
     supabase.from("hourlog_sessions").select("id,user_id,start_time,end_time,note").order("start_time", { ascending: false }),
-    supabase.from("hourlog_settings").select("user_id,daily_target_hours,tracking_start_month,target_version"),
+    supabase.from("hourlog_settings").select("user_id,daily_target_hours,tracking_start_month,timezone,target_version"),
     supabase.from("hourlog_holidays").select("user_id,holiday_date,reason").order("holiday_date", { ascending: false }),
   ]);
 
