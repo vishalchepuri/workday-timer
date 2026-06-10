@@ -209,6 +209,34 @@ function exportSessionsCsv(sessions) {
   URL.revokeObjectURL(url);
 }
 
+function exportAdminSessionsCsv(sessions, profileMap) {
+  const rows = [
+    ["User", "Email", "Date", "Login", "Logout", "Duration", "Status", "Note"],
+    ...sessions.map((session) => {
+      const profile = profileMap.get(session.userId);
+      const start = new Date(session.startTime);
+      const end = session.endTime ? new Date(session.endTime) : null;
+      return [
+        profile?.name || session.userId,
+        profile?.email || "",
+        formatDate(start),
+        formatTime(start),
+        end ? formatTime(end) : "",
+        end ? formatDuration(sessionDuration(session)) : "",
+        end ? "Completed" : "Active",
+        session.note || "",
+      ];
+    }),
+  ];
+  const csv = rows.map((row) => row.map(csvEscape).join(",")).join("\n");
+  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `hourlog-admin-${dayKey(new Date())}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 function totalDuration(sessions, liveNow) {
   return sessions.reduce((total, session) => total + sessionDuration(session, liveNow), 0);
 }
@@ -489,13 +517,27 @@ function HomeScreen({ onGetStarted, onSignIn }) {
   );
 }
 
-function AuthScreen({ onSignIn, onSignUp, cloudAuthEnabled, initialMode = "signin", onNavigateHome, onNavigateAuth }) {
+function AuthScreen({
+  onSignIn,
+  onSignUp,
+  onRequestOtp,
+  onVerifyOtp,
+  onResetPassword,
+  cloudAuthEnabled,
+  initialMode = "signin",
+  onNavigateHome,
+  onNavigateAuth,
+}) {
   const [mode, setMode] = useState(initialMode);
+  const [signInMethod, setSignInMethod] = useState("password");
   const [message, setMessage] = useState("");
   const [pending, setPending] = useState(false);
+  const [otpEmail, setOtpEmail] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
 
   useEffect(() => {
     setMode(initialMode);
+    setSignInMethod("password");
     setMessage("");
   }, [initialMode]);
 
@@ -505,6 +547,36 @@ function AuthScreen({ onSignIn, onSignUp, cloudAuthEnabled, initialMode = "signi
     const form = new FormData(event.currentTarget);
     const error = await onSignIn(String(form.get("email")), String(form.get("password")));
     setMessage(error || "");
+    setPending(false);
+  }
+
+  async function handleRequestOtp(event) {
+    event.preventDefault();
+    setPending(true);
+    const form = new FormData(event.currentTarget);
+    const email = String(form.get("otpEmail"));
+    const error = await onRequestOtp(email);
+    setOtpEmail(email);
+    setOtpSent(!error);
+    setMessage(error || "OTP sent. Check your email and enter the code.");
+    setPending(false);
+  }
+
+  async function handleVerifyOtp(event) {
+    event.preventDefault();
+    setPending(true);
+    const form = new FormData(event.currentTarget);
+    const error = await onVerifyOtp(otpEmail, String(form.get("otpCode")));
+    setMessage(error || "");
+    setPending(false);
+  }
+
+  async function handleResetPassword(event) {
+    event.preventDefault();
+    setPending(true);
+    const form = new FormData(event.currentTarget);
+    const error = await onResetPassword(String(form.get("resetEmail")));
+    setMessage(error || "Password reset link sent. Please check your email.");
     setPending(false);
   }
 
@@ -559,19 +631,81 @@ function AuthScreen({ onSignIn, onSignUp, cloudAuthEnabled, initialMode = "signi
         </div>
 
         {mode === "signin" ? (
-          <form className="auth-form" onSubmit={handleSignIn}>
-            <label>
-              <span>Email</span>
-              <input name="email" type="email" autoComplete="email" required />
-            </label>
-            <label>
-              <span>Password</span>
-              <input name="password" type="password" autoComplete="current-password" required />
-            </label>
-            <button className="primary-action" type="submit" disabled={pending}>
-              {pending ? "Signing in..." : "Sign in"}
-            </button>
-          </form>
+          <>
+            <div className="auth-methods" role="group" aria-label="Sign in method">
+              {[
+                ["password", "Password"],
+                ["otp", "Email OTP"],
+                ["reset", "Reset"],
+              ].map(([key, label]) => (
+                <button
+                  className={signInMethod === key ? "active" : ""}
+                  type="button"
+                  key={key}
+                  onClick={() => {
+                    setSignInMethod(key);
+                    setMessage("");
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {signInMethod === "password" && (
+              <form className="auth-form" onSubmit={handleSignIn}>
+                <label>
+                  <span>Email</span>
+                  <input name="email" type="email" autoComplete="email" required />
+                </label>
+                <label>
+                  <span>Password</span>
+                  <input name="password" type="password" autoComplete="current-password" required />
+                </label>
+                <button className="primary-action" type="submit" disabled={pending}>
+                  {pending ? "Signing in..." : "Sign in"}
+                </button>
+              </form>
+            )}
+
+            {signInMethod === "otp" && (
+              <div className="auth-stack">
+                <form className="auth-form" onSubmit={handleRequestOtp}>
+                  <label>
+                    <span>Email</span>
+                    <input name="otpEmail" type="email" autoComplete="email" defaultValue={otpEmail} required />
+                  </label>
+                  <button className="primary-action" type="submit" disabled={pending}>
+                    {pending ? "Sending..." : otpSent ? "Send OTP again" : "Send OTP"}
+                  </button>
+                </form>
+                {otpSent && (
+                  <form className="auth-form compact" onSubmit={handleVerifyOtp}>
+                    <label>
+                      <span>OTP code</span>
+                      <input name="otpCode" inputMode="numeric" autoComplete="one-time-code" placeholder="6 digit code" required />
+                    </label>
+                    <button className="primary-action" type="submit" disabled={pending}>
+                      {pending ? "Verifying..." : "Verify and sign in"}
+                    </button>
+                  </form>
+                )}
+              </div>
+            )}
+
+            {signInMethod === "reset" && (
+              <form className="auth-form" onSubmit={handleResetPassword}>
+                <label>
+                  <span>Email</span>
+                  <input name="resetEmail" type="email" autoComplete="email" required />
+                </label>
+                <button className="primary-action" type="submit" disabled={pending}>
+                  {pending ? "Sending..." : "Send reset link"}
+                </button>
+                <p className="auth-hint">After opening the reset email, return here and sign in with your new password.</p>
+              </form>
+            )}
+          </>
         ) : (
           <form className="auth-form" onSubmit={handleSignUp}>
             <label>
@@ -595,6 +729,57 @@ function AuthScreen({ onSignIn, onSignUp, cloudAuthEnabled, initialMode = "signi
 
         <p className={`form-message ${message ? "" : "neutral"}`} role="status" aria-live="polite">
           {message || (cloudAuthEnabled ? "Secure cloud sync is ready." : "Supabase is not configured.")}
+        </p>
+      </div>
+    </section>
+  );
+}
+
+function PasswordResetScreen({ onUpdatePassword, onSignOut }) {
+  const [message, setMessage] = useState("");
+  const [pending, setPending] = useState(false);
+
+  async function handleUpdatePassword(event) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const password = String(form.get("password"));
+    const confirm = String(form.get("confirm"));
+    if (password !== confirm) {
+      setMessage("Passwords do not match.");
+      return;
+    }
+    setPending(true);
+    const error = await onUpdatePassword(password);
+    setMessage(error || "");
+    setPending(false);
+  }
+
+  return (
+    <section className="auth-screen" aria-labelledby="reset-title">
+      <button className="back-home" type="button" onClick={onSignOut}>
+        HourLog
+      </button>
+      <div className="auth-panel">
+        <div className="auth-heading">
+          <p className="eyebrow">Password reset</p>
+          <h1 id="reset-title">Set a new password</h1>
+          <p>Enter a new password for your HourLog account.</p>
+        </div>
+        <form className="auth-form" onSubmit={handleUpdatePassword}>
+          <label>
+            <span>New password</span>
+            <input name="password" type="password" autoComplete="new-password" minLength="6" required />
+          </label>
+          <label>
+            <span>Confirm password</span>
+            <input name="confirm" type="password" autoComplete="new-password" minLength="6" required />
+          </label>
+          <button className="primary-action" type="submit" disabled={pending}>
+            {pending ? "Saving..." : "Save new password"}
+          </button>
+        </form>
+        <p className={`form-message ${message ? "" : "neutral"}`} role="status" aria-live="polite">
+          {message || "Use at least 6 characters."}
         </p>
       </div>
     </section>
@@ -766,6 +951,10 @@ function RecentTimeline({ completedSessions }) {
 function AdminPortal({ isAdmin }) {
   const [adminData, setAdminData] = useState(null);
   const [status, setStatus] = useState(isAdmin ? "Loading admin data..." : "Admin access is not enabled for this account.");
+  const [query, setQuery] = useState("");
+  const [startDate, setStartDate] = useState(dayKey(startOfMonth(new Date())));
+  const [endDate, setEndDate] = useState(dayKey(new Date()));
+  const [activeOnly, setActiveOnly] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -790,8 +979,23 @@ function AdminPortal({ isAdmin }) {
   const profiles = adminData?.profiles || [];
   const sessions = adminData?.sessions || [];
   const profileMap = new Map(profiles.map((profile) => [profile.id, profile]));
-  const completedSessions = sessions.filter((session) => session.endTime);
-  const activeSessions = sessions.filter((session) => !session.endTime);
+  const queryValue = query.trim().toLowerCase();
+  const filterStart = startDate ? new Date(`${startDate}T00:00:00`) : null;
+  const filterEnd = endDate ? new Date(`${endDate}T23:59:59`) : null;
+  const filteredSessions = sessions.filter((session) => {
+    const profile = profileMap.get(session.userId);
+    const startedAt = new Date(session.startTime);
+    const matchesQuery =
+      !queryValue ||
+      session.userId.toLowerCase().includes(queryValue) ||
+      profile?.name?.toLowerCase().includes(queryValue) ||
+      profile?.email?.toLowerCase().includes(queryValue);
+    const matchesDate = (!filterStart || startedAt >= filterStart) && (!filterEnd || startedAt <= filterEnd);
+    const matchesStatus = !activeOnly || !session.endTime;
+    return matchesQuery && matchesDate && matchesStatus;
+  });
+  const completedSessions = filteredSessions.filter((session) => session.endTime);
+  const activeSessions = filteredSessions.filter((session) => !session.endTime);
   const today = new Date();
   const todaySessions = sessionsBetween(completedSessions, startOfDay(today), today);
   const monthSessions = sessionsBetween(completedSessions, startOfMonth(today), today);
@@ -805,8 +1009,17 @@ function AdminPortal({ isAdmin }) {
       latest: latestSession ? new Date(latestSession.startTime) : null,
     };
   });
+  const visibleUsers = users.filter((profile) => {
+    const matchesQuery =
+      !queryValue ||
+      profile.id.toLowerCase().includes(queryValue) ||
+      profile.name.toLowerCase().includes(queryValue) ||
+      profile.email.toLowerCase().includes(queryValue);
+    const hasMatchingSession = profile.sessions > 0 || activeSessions.some((session) => session.userId === profile.id);
+    return matchesQuery && hasMatchingSession;
+  });
   const summary = [
-    ["Users", profiles.length],
+    ["Users", visibleUsers.length],
     ["Active now", activeSessions.length],
     ["Today total", formatDuration(totalDuration(todaySessions))],
     ["This month", formatDuration(totalDuration(monthSessions))],
@@ -844,6 +1057,29 @@ function AdminPortal({ isAdmin }) {
 
       {adminData && (
         <>
+          <div className="admin-filters">
+            <label>
+              <span>Search user</span>
+              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Name, email, or user id" />
+            </label>
+            <label>
+              <span>Start</span>
+              <input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} />
+            </label>
+            <label>
+              <span>End</span>
+              <input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} />
+            </label>
+            <label className="toggle-row">
+              <input type="checkbox" checked={activeOnly} onChange={(event) => setActiveOnly(event.target.checked)} />
+              <span>Active only</span>
+            </label>
+            <button className="tool-button" type="button" onClick={() => exportAdminSessionsCsv(filteredSessions, profileMap)}>
+              <Download aria-hidden="true" size={16} />
+              <span>Export CSV</span>
+            </button>
+          </div>
+
           <div className="admin-summary-grid">
             {summary.map(([label, value]) => (
               <article className="stat-card" key={label}>
@@ -862,8 +1098,8 @@ function AdminPortal({ isAdmin }) {
                 </div>
               </div>
               <div className="admin-user-list">
-                {users.length ? (
-                  users.map((profile) => (
+                {visibleUsers.length ? (
+                  visibleUsers.map((profile) => (
                     <article className="admin-user-row" key={profile.id}>
                       <div>
                         <strong>{profile.name}</strong>
@@ -892,7 +1128,7 @@ function AdminPortal({ isAdmin }) {
                 </div>
               </div>
               <div className="admin-session-list">
-                {sessions.slice(0, 30).map((session) => {
+                {filteredSessions.slice(0, 30).map((session) => {
                   const profile = profileMap.get(session.userId);
                   const start = new Date(session.startTime);
                   const end = session.endTime ? new Date(session.endTime) : null;
@@ -909,6 +1145,7 @@ function AdminPortal({ isAdmin }) {
                     </article>
                   );
                 })}
+                {!filteredSessions.length && <div className="empty-state">No sessions match the current filters.</div>}
               </div>
             </section>
           </div>
@@ -1707,6 +1944,7 @@ export default function App() {
   const [currentUserId, setCurrentUserId] = useState(readCurrentUserId);
   const [cloudStatus, setCloudStatus] = useState(isSupabaseConfigured ? "Supabase ready" : "Supabase not configured");
   const [route, setRoute] = useState(getAppRoute);
+  const [passwordRecovery, setPasswordRecovery] = useState(false);
   const loadedCloudUsers = useRef(new Set());
   const user = useMemo(() => data.users.find((candidate) => candidate.id === currentUserId) || null, [data.users, currentUserId]);
   const isAdminUser = Boolean(user?.email && adminEmail && user.email.toLowerCase() === adminEmail);
@@ -1820,9 +2058,13 @@ export default function App() {
     supabase.auth.getSession().then(({ data: sessionData }) => {
       if (sessionData.session?.user) ensureUser(sessionData.session.user);
     });
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
         ensureUser(session.user);
+        if (event === "PASSWORD_RECOVERY") {
+          setPasswordRecovery(true);
+          navigate("/signin");
+        }
       } else {
         clearCurrentUserId();
         setCurrentUserId(null);
@@ -1892,10 +2134,51 @@ export default function App() {
     return "";
   }
 
+  async function requestOtp(email) {
+    if (!supabase) return "Supabase is not configured.";
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        shouldCreateUser: false,
+      },
+    });
+    return error ? friendlyAuthError(error) : "";
+  }
+
+  async function verifyOtp(email, token) {
+    if (!supabase) return "Supabase is not configured.";
+    const { data: authData, error } = await supabase.auth.verifyOtp({
+      email,
+      token,
+      type: "email",
+    });
+    if (error) return friendlyAuthError(error);
+    if (authData.user) ensureUser(authData.user);
+    navigate("/app");
+    return "";
+  }
+
+  async function resetPassword(email) {
+    if (!supabase) return "Supabase is not configured.";
+    const redirectTo = `${window.location.origin}/signin`;
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+    return error ? friendlyAuthError(error) : "";
+  }
+
+  async function updatePassword(password) {
+    if (!supabase) return "Supabase is not configured.";
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) return friendlyAuthError(error);
+    setPasswordRecovery(false);
+    navigate("/app");
+    return "";
+  }
+
   async function signOut() {
     if (supabase) await supabase.auth.signOut();
     clearCurrentUserId();
     setCurrentUserId(null);
+    setPasswordRecovery(false);
     navigate("/signin");
   }
 
@@ -1903,7 +2186,9 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      {user ? (
+      {passwordRecovery ? (
+        <PasswordResetScreen onUpdatePassword={updatePassword} onSignOut={signOut} />
+      ) : user ? (
         <Dashboard
           user={user}
           data={data}
@@ -1919,6 +2204,9 @@ export default function App() {
         <AuthScreen
           onSignIn={signIn}
           onSignUp={signUp}
+          onRequestOtp={requestOtp}
+          onVerifyOtp={verifyOtp}
+          onResetPassword={resetPassword}
           cloudAuthEnabled={isSupabaseConfigured}
           initialMode={authMode}
           onNavigateHome={() => navigate("/")}

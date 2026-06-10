@@ -400,6 +400,38 @@ p {
   margin-top: 16px;
 }
 
+.auth-form.compact {
+  margin-top: 0;
+}
+
+.auth-stack {
+  display: grid;
+  gap: 12px;
+}
+
+.auth-methods {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.auth-methods button {
+  min-height: 38px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+  background: #000;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.auth-methods button.active {
+  color: var(--text);
+  border-color: var(--accent);
+  background: #151515;
+}
+
 label {
   display: grid;
   gap: 7px;
@@ -1057,6 +1089,31 @@ textarea:focus {
   margin-bottom: 14px;
 }
 
+.admin-filters {
+  display: grid;
+  grid-template-columns: minmax(190px, 1fr) repeat(2, minmax(140px, 0.5fr)) auto auto;
+  gap: 10px;
+  align-items: end;
+  margin-bottom: 14px;
+}
+
+.toggle-row {
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #000;
+  padding: 0 12px;
+}
+
+.toggle-row input {
+  width: 18px;
+  min-height: 18px;
+  accent-color: #fff;
+}
+
 .admin-grid {
   display: grid;
   grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
@@ -1435,7 +1492,8 @@ textarea:focus {
 
   .stats-grid,
   .workspace,
-  .admin-grid {
+  .admin-grid,
+  .admin-filters {
     grid-template-columns: 1fr;
   }
 
@@ -1583,6 +1641,10 @@ textarea:focus {
     min-height: 40px;
   }
 
+  .auth-methods {
+    grid-template-columns: 1fr;
+  }
+
   .stats-grid,
   .report-summary,
   .custom-range {
@@ -1670,6 +1732,10 @@ textarea:focus {
   .filter {
     min-width: 0;
     padding: 0 6px;
+  }
+
+  .toggle-row {
+    min-height: 42px;
   }
 
   .holiday-control {
