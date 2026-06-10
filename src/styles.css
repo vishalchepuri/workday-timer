@@ -410,27 +410,20 @@ p {
   gap: 12px;
 }
 
-.auth-methods {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
-  margin-top: 14px;
-}
-
-.auth-methods button {
-  min-height: 38px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
+.text-action {
+  width: fit-content;
+  min-height: 34px;
+  border: 0;
   color: var(--muted);
-  background: #000;
+  background: transparent;
   cursor: pointer;
   font-weight: 800;
+  padding: 0;
+  text-align: left;
 }
 
-.auth-methods button.active {
+.text-action:hover {
   color: var(--text);
-  border-color: var(--accent);
-  background: #151515;
 }
 
 label {
@@ -1732,10 +1725,6 @@ textarea:focus {
 
   .segment {
     min-height: 40px;
-  }
-
-  .auth-methods {
-    grid-template-columns: 1fr;
   }
 
   .stats-grid,

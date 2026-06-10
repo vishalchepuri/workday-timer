@@ -527,8 +527,7 @@ function HomeScreen({ onGetStarted, onSignIn }) {
 function AuthScreen({
   onSignIn,
   onSignUp,
-  onRequestOtp,
-  onVerifyOtp,
+  onVerifySignupOtp,
   onResetPassword,
   cloudAuthEnabled,
   initialMode = "signin",
@@ -536,15 +535,15 @@ function AuthScreen({
   onNavigateAuth,
 }) {
   const [mode, setMode] = useState(initialMode);
-  const [signInMethod, setSignInMethod] = useState("password");
   const [message, setMessage] = useState("");
   const [pending, setPending] = useState(false);
-  const [otpEmail, setOtpEmail] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
+  const [resetOpen, setResetOpen] = useState(false);
+  const [signupOtpEmail, setSignupOtpEmail] = useState("");
 
   useEffect(() => {
     setMode(initialMode);
-    setSignInMethod("password");
+    setResetOpen(false);
+    setSignupOtpEmail("");
     setMessage("");
   }, [initialMode]);
 
@@ -553,27 +552,6 @@ function AuthScreen({
     setPending(true);
     const form = new FormData(event.currentTarget);
     const error = await onSignIn(String(form.get("email")), String(form.get("password")));
-    setMessage(error || "");
-    setPending(false);
-  }
-
-  async function handleRequestOtp(event) {
-    event.preventDefault();
-    setPending(true);
-    const form = new FormData(event.currentTarget);
-    const email = String(form.get("otpEmail"));
-    const error = await onRequestOtp(email);
-    setOtpEmail(email);
-    setOtpSent(!error);
-    setMessage(error || "OTP sent. Check your email and enter the code.");
-    setPending(false);
-  }
-
-  async function handleVerifyOtp(event) {
-    event.preventDefault();
-    setPending(true);
-    const form = new FormData(event.currentTarget);
-    const error = await onVerifyOtp(otpEmail, String(form.get("otpCode")));
     setMessage(error || "");
     setPending(false);
   }
@@ -591,7 +569,21 @@ function AuthScreen({
     event.preventDefault();
     setPending(true);
     const form = new FormData(event.currentTarget);
-    const error = await onSignUp(String(form.get("name")), String(form.get("email")), String(form.get("password")));
+    const result = await onSignUp(String(form.get("name")), String(form.get("email")), String(form.get("password")));
+    if (result?.needsOtp) {
+      setSignupOtpEmail(result.email);
+      setMessage(result.message);
+    } else {
+      setMessage(result?.message || result || "");
+    }
+    setPending(false);
+  }
+
+  async function handleVerifySignupOtp(event) {
+    event.preventDefault();
+    setPending(true);
+    const form = new FormData(event.currentTarget);
+    const error = await onVerifySignupOtp(signupOtpEmail, String(form.get("signupOtp")));
     setMessage(error || "");
     setPending(false);
   }
@@ -638,28 +630,8 @@ function AuthScreen({
         </div>
 
         {mode === "signin" ? (
-          <>
-            <div className="auth-methods" role="group" aria-label="Sign in method">
-              {[
-                ["password", "Password"],
-                ["otp", "Email OTP"],
-                ["reset", "Reset"],
-              ].map(([key, label]) => (
-                <button
-                  className={signInMethod === key ? "active" : ""}
-                  type="button"
-                  key={key}
-                  onClick={() => {
-                    setSignInMethod(key);
-                    setMessage("");
-                  }}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-
-            {signInMethod === "password" && (
+          <div className="auth-stack">
+            {!resetOpen ? (
               <form className="auth-form" onSubmit={handleSignIn}>
                 <label>
                   <span>Email</span>
@@ -672,35 +644,18 @@ function AuthScreen({
                 <button className="primary-action" type="submit" disabled={pending}>
                   {pending ? "Signing in..." : "Sign in"}
                 </button>
+                <button
+                  className="text-action"
+                  type="button"
+                  onClick={() => {
+                    setResetOpen(true);
+                    setMessage("");
+                  }}
+                >
+                  Forgot password?
+                </button>
               </form>
-            )}
-
-            {signInMethod === "otp" && (
-              <div className="auth-stack">
-                <form className="auth-form" onSubmit={handleRequestOtp}>
-                  <label>
-                    <span>Email</span>
-                    <input name="otpEmail" type="email" autoComplete="email" defaultValue={otpEmail} required />
-                  </label>
-                  <button className="primary-action" type="submit" disabled={pending}>
-                    {pending ? "Sending..." : otpSent ? "Send OTP again" : "Send OTP"}
-                  </button>
-                </form>
-                {otpSent && (
-                  <form className="auth-form compact" onSubmit={handleVerifyOtp}>
-                    <label>
-                      <span>OTP code</span>
-                      <input name="otpCode" inputMode="numeric" autoComplete="one-time-code" placeholder="6 digit code" required />
-                    </label>
-                    <button className="primary-action" type="submit" disabled={pending}>
-                      {pending ? "Verifying..." : "Verify and sign in"}
-                    </button>
-                  </form>
-                )}
-              </div>
-            )}
-
-            {signInMethod === "reset" && (
+            ) : (
               <form className="auth-form" onSubmit={handleResetPassword}>
                 <label>
                   <span>Email</span>
@@ -709,10 +664,44 @@ function AuthScreen({
                 <button className="primary-action" type="submit" disabled={pending}>
                   {pending ? "Sending..." : "Send reset link"}
                 </button>
+                <button
+                  className="text-action"
+                  type="button"
+                  onClick={() => {
+                    setResetOpen(false);
+                    setMessage("");
+                  }}
+                >
+                  Back to sign in
+                </button>
                 <p className="auth-hint">After opening the reset email, return here and sign in with your new password.</p>
               </form>
             )}
-          </>
+          </div>
+        ) : signupOtpEmail ? (
+          <form className="auth-form" onSubmit={handleVerifySignupOtp}>
+            <label>
+              <span>Email</span>
+              <input value={signupOtpEmail} disabled />
+            </label>
+            <label>
+              <span>Verification code</span>
+              <input name="signupOtp" inputMode="numeric" autoComplete="one-time-code" placeholder="Enter OTP from email" required />
+            </label>
+            <button className="primary-action" type="submit" disabled={pending}>
+              {pending ? "Verifying..." : "Verify account"}
+            </button>
+            <button
+              className="text-action"
+              type="button"
+              onClick={() => {
+                setSignupOtpEmail("");
+                setMessage("");
+              }}
+            >
+              Use a different email
+            </button>
+          </form>
         ) : (
           <form className="auth-form" onSubmit={handleSignUp}>
             <label>
@@ -730,7 +719,7 @@ function AuthScreen({
             <button className="primary-action" type="submit" disabled={pending}>
               {pending ? "Creating..." : "Create account"}
             </button>
-            <p className="auth-hint">If you already created this account, switch to Sign in instead of requesting another email.</p>
+            <p className="auth-hint">After creating the account, enter the OTP from your email here to verify.</p>
           </form>
         )}
 
@@ -2381,12 +2370,18 @@ export default function App() {
             return "";
           }
         }
-        return friendlyAuthError(error);
+        return { message: friendlyAuthError(error) };
       }
-      if (authData.user) ensureUser(authData.user, name);
-      if (authData.session) navigate("/app");
-      if (!authData.session) return "Account created. Please confirm your email if Supabase requires it, then sign in.";
-      return "";
+      if (authData.session && authData.user) {
+        ensureUser(authData.user, name);
+        navigate("/app");
+        return "";
+      }
+      return {
+        needsOtp: true,
+        email,
+        message: "Account created. Enter the OTP sent to your email to verify and sign in.",
+      };
     }
     if (data.users.some((candidate) => candidate.email.toLowerCase() === email.toLowerCase())) {
       return "This email already has an account.";
@@ -2406,23 +2401,12 @@ export default function App() {
     return "";
   }
 
-  async function requestOtp(email) {
-    if (!supabase) return "Supabase is not configured.";
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        shouldCreateUser: false,
-      },
-    });
-    return error ? friendlyAuthError(error) : "";
-  }
-
-  async function verifyOtp(email, token) {
+  async function verifySignupOtp(email, token) {
     if (!supabase) return "Supabase is not configured.";
     const { data: authData, error } = await supabase.auth.verifyOtp({
       email,
       token,
-      type: "email",
+      type: "signup",
     });
     if (error) return friendlyAuthError(error);
     if (authData.user) ensureUser(authData.user);
@@ -2476,8 +2460,7 @@ export default function App() {
         <AuthScreen
           onSignIn={signIn}
           onSignUp={signUp}
-          onRequestOtp={requestOtp}
-          onVerifyOtp={verifyOtp}
+          onVerifySignupOtp={verifySignupOtp}
           onResetPassword={resetPassword}
           cloudAuthEnabled={isSupabaseConfigured}
           initialMode={authMode}
