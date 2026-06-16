@@ -36,7 +36,7 @@ import {
   upsertRemoteSettings,
   deleteRemoteSession,
 } from "./lib/supabaseData.js";
-import { adminEmail, isSupabaseConfigured, supabase } from "./lib/supabaseClient.js";
+import { adminEmail, isSupabaseConfigured, siteUrl, supabase } from "./lib/supabaseClient.js";
 
 function formatDate(date) {
   return new Intl.DateTimeFormat(undefined, {
@@ -2317,6 +2317,7 @@ export default function App() {
         email,
         password,
         options: {
+          emailRedirectTo: `${siteUrl}/signin`,
           data: { name },
         },
       });
@@ -2358,7 +2359,7 @@ export default function App() {
 
   async function resetPassword(email) {
     if (!supabase) return "Supabase is not configured.";
-    const redirectTo = `${window.location.origin}/signin`;
+    const redirectTo = `${siteUrl}/signin`;
     const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
     return error ? friendlyAuthError(error) : "";
   }

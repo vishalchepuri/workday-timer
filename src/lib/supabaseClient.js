@@ -6,6 +6,14 @@ const supabaseKey =
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "";
 export const adminEmail =
   (import.meta.env.VITE_ADMIN_EMAIL || import.meta.env.NEXT_PUBLIC_ADMIN_EMAIL || "").trim().toLowerCase();
+const configuredSiteUrl =
+  import.meta.env.VITE_SITE_URL ||
+  import.meta.env.NEXT_PUBLIC_SITE_URL ||
+  import.meta.env.VITE_APP_URL ||
+  import.meta.env.NEXT_PUBLIC_APP_URL ||
+  "";
+
+export const siteUrl = (configuredSiteUrl || "https://log.dayza.site").replace(/\/+$/, "");
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseKey);
 

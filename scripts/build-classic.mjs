@@ -50,9 +50,13 @@ await build({
     "import.meta.env.NEXT_PUBLIC_SUPABASE_URL": JSON.stringify(envValue("NEXT_PUBLIC_SUPABASE_URL")),
     "import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(envValue("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY")),
     "import.meta.env.NEXT_PUBLIC_ADMIN_EMAIL": JSON.stringify(envValue("NEXT_PUBLIC_ADMIN_EMAIL")),
+    "import.meta.env.NEXT_PUBLIC_SITE_URL": JSON.stringify(envValue("NEXT_PUBLIC_SITE_URL")),
+    "import.meta.env.NEXT_PUBLIC_APP_URL": JSON.stringify(envValue("NEXT_PUBLIC_APP_URL")),
     "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(envValue("VITE_SUPABASE_URL")),
     "import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(envValue("VITE_SUPABASE_PUBLISHABLE_KEY")),
     "import.meta.env.VITE_ADMIN_EMAIL": JSON.stringify(envValue("VITE_ADMIN_EMAIL")),
+    "import.meta.env.VITE_SITE_URL": JSON.stringify(envValue("VITE_SITE_URL")),
+    "import.meta.env.VITE_APP_URL": JSON.stringify(envValue("VITE_APP_URL")),
   },
   jsx: "automatic",
 });
