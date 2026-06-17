@@ -551,6 +551,27 @@ textarea:focus {
   line-height: 1.4;
 }
 
+.verification-panel {
+  display: grid;
+  gap: 18px;
+}
+
+.verified-icon {
+  width: 62px;
+  height: 62px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: #000;
+  background: var(--text);
+}
+
+.verification-actions {
+  display: grid;
+  gap: 10px;
+}
+
 .form-message.compact {
   min-height: 0;
   margin: 2px 0;
@@ -601,6 +622,32 @@ textarea:focus {
   color: var(--muted);
   font-size: 0.84rem;
   font-weight: 700;
+}
+
+.ios-install-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ios-install-steps li {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #000;
+  padding: 0 9px;
+}
+
+.ios-install-steps li span {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.76rem;
 }
 
 .dashboard-layout {
@@ -1046,12 +1093,121 @@ textarea:focus {
 }
 
 .insights-panel,
-.timeline-panel {
+.timeline-panel,
+.today-flow-panel {
   border: 1px solid rgba(255, 255, 255, 0.11);
   border-radius: 8px;
   background: #070707;
   box-shadow: var(--shadow);
   padding: 18px;
+}
+
+.today-flow-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.flow-state {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+  background: #000;
+  padding: 0 11px;
+  font-size: 0.78rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.flow-state.active {
+  color: #000;
+  border-color: var(--text);
+  background: var(--text);
+}
+
+.today-flow-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.today-flow-summary div {
+  min-height: 82px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #000;
+  padding: 12px;
+}
+
+.today-flow-summary span,
+.today-session-row span,
+.today-session-row small,
+.next-action span {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 750;
+}
+
+.today-flow-summary strong {
+  display: block;
+  margin-top: 12px;
+  font-size: 1.35rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.today-session-list {
+  display: grid;
+  gap: 8px;
+}
+
+.today-session-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 14px;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #000;
+  padding: 12px;
+}
+
+.today-session-row.active {
+  border-color: var(--text);
+  background: #101010;
+}
+
+.today-session-row small {
+  grid-column: 1 / -1;
+  color: var(--warning);
+}
+
+.today-session-row strong,
+.today-session-row span {
+  display: block;
+}
+
+.today-session-row strong {
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+}
+
+.today-session-row b {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.next-action {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #000;
+  padding: 0 10px;
 }
 
 .insight-grid {
@@ -1587,6 +1743,10 @@ textarea:focus {
     grid-template-columns: 1fr;
   }
 
+  .today-flow-summary {
+    grid-template-columns: 1fr;
+  }
+
   .topbar {
     align-items: flex-start;
   }
@@ -1780,9 +1940,22 @@ textarea:focus {
   .profile-panel,
   .install-prompt,
   .balance-alert,
+  .today-flow-panel,
   .stat-card {
     border-radius: 8px;
     padding: 14px;
+  }
+
+  .today-flow-summary div {
+    min-height: 72px;
+  }
+
+  .today-session-row {
+    grid-template-columns: 1fr;
+  }
+
+  .today-session-row b {
+    white-space: normal;
   }
 
   .clock-panel h2 {

@@ -3,14 +3,18 @@ import {
   ArrowRight,
   BarChart3,
   CalendarDays,
+  CheckCircle2,
   Download,
+  Home,
   ListChecks,
   LogIn,
   LogOut,
+  Mail,
   Pencil,
   Save,
   ShieldCheck,
   Smartphone,
+  Share,
   Timer,
   Trash2,
   TrendingUp,
@@ -741,6 +745,35 @@ function PasswordResetScreen({ onUpdatePassword, onSignOut }) {
   );
 }
 
+function EmailVerifiedScreen({ hasUser, onContinue, onSignIn }) {
+  return (
+    <section className="auth-screen verification-screen" aria-labelledby="verified-title">
+      <button className="back-home" type="button" onClick={hasUser ? onContinue : onSignIn}>
+        HourLog
+      </button>
+      <div className="auth-panel verification-panel">
+        <div className="verified-icon" aria-hidden="true">
+          <CheckCircle2 size={34} />
+        </div>
+        <div className="auth-heading">
+          <p className="eyebrow">Email verification</p>
+          <h1 id="verified-title">{hasUser ? "Email verified" : "Checking your email link"}</h1>
+          <p>
+            {hasUser
+              ? "Your HourLog account is ready. Continue to your dashboard and start tracking your work sessions."
+              : "If verification is complete, sign in with the email and password you used when creating the account."}
+          </p>
+        </div>
+        <div className="verification-actions">
+          <button className="primary-action" type="button" onClick={hasUser ? onContinue : onSignIn}>
+            {hasUser ? "Open dashboard" : "Go to sign in"}
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function InstallPrompt() {
   const [installEvent, setInstallEvent] = useState(null);
   const [dismissed, setDismissed] = useState(() => window.localStorage?.getItem("hourlog_install_dismissed") === "1");
@@ -776,7 +809,19 @@ function InstallPrompt() {
       <Smartphone aria-hidden="true" size={18} />
       <div>
         <strong>Install HourLog</strong>
-        <span>{isIOS ? "Use Safari Share, then Add to Home Screen." : "Keep the tracker on your home screen."}</span>
+        <span>{isIOS ? "Open in Safari, tap Share, then Add to Home Screen." : "Keep the tracker on your home screen."}</span>
+        {isIOS && (
+          <ol className="ios-install-steps" aria-label="iPhone install steps">
+            <li>
+              <Share aria-hidden="true" size={14} />
+              <span>Tap Share</span>
+            </li>
+            <li>
+              <Home aria-hidden="true" size={14} />
+              <span>Add to Home Screen</span>
+            </li>
+          </ol>
+        )}
       </div>
       {installEvent && (
         <button className="tool-button" type="button" onClick={installApp}>
@@ -975,6 +1020,79 @@ function RecentTimeline({ completedSessions }) {
       ) : (
         <div className="empty-state">No completed days yet. Your timeline will appear after your first logout.</div>
       )}
+    </section>
+  );
+}
+
+function TodayTimeline({ sessions, activeSession, liveNow }) {
+  const todayStart = startOfDay(liveNow);
+  const todaySessions = sessionsBetween(sessions, todayStart, liveNow).sort(
+    (a, b) => new Date(a.startTime) - new Date(b.startTime)
+  );
+  const completedToday = todaySessions.filter((session) => session.endTime);
+  const totalToday = totalDuration(todaySessions, liveNow);
+  const breakTotal = todaySessions.reduce((total, session, index) => {
+    if (index === 0) return total;
+    const previous = todaySessions[index - 1];
+    if (!previous.endTime) return total;
+    return total + Math.max(0, new Date(session.startTime).getTime() - new Date(previous.endTime).getTime());
+  }, 0);
+  const nextAction = activeSession ? "Logout when this work block ends" : todaySessions.length ? "Login again after your break" : "Login when work starts";
+
+  return (
+    <section className="today-flow-panel" aria-label="Today work timeline">
+      <div className="section-header">
+        <div>
+          <p className="eyebrow">Today flow</p>
+          <h2>{dayKey(liveNow)}</h2>
+        </div>
+        <span className={`flow-state ${activeSession ? "active" : ""}`}>{activeSession ? "Active" : "Ready"}</span>
+      </div>
+      <div className="today-flow-summary">
+        <div>
+          <span>Total</span>
+          <strong>{formatDuration(totalToday)}</strong>
+        </div>
+        <div>
+          <span>Sessions</span>
+          <strong>{todaySessions.length}</strong>
+        </div>
+        <div>
+          <span>Break time</span>
+          <strong>{formatDuration(breakTotal)}</strong>
+        </div>
+      </div>
+      {todaySessions.length ? (
+        <div className="today-session-list">
+          {todaySessions.map((session, index) => {
+            const start = new Date(session.startTime);
+            const end = session.endTime ? new Date(session.endTime) : liveNow;
+            const previous = todaySessions[index - 1];
+            const breakBefore =
+              previous?.endTime && new Date(session.startTime) > new Date(previous.endTime)
+                ? new Date(session.startTime).getTime() - new Date(previous.endTime).getTime()
+                : 0;
+            return (
+              <article className={`today-session-row ${session.endTime ? "" : "active"}`} key={session.id}>
+                {breakBefore > 0 && <small>Break before: {formatDuration(breakBefore)}</small>}
+                <div>
+                  <span>{session.endTime ? `Session ${completedToday.indexOf(session) + 1}` : "Active session"}</span>
+                  <strong>
+                    {formatTime(start)} - {session.endTime ? formatTime(end) : "Now"}
+                  </strong>
+                </div>
+                <b>{formatDuration(sessionDuration(session, liveNow))}</b>
+              </article>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="empty-state">No sessions today. Your first login will start the day timeline.</div>
+      )}
+      <div className="next-action">
+        <Mail aria-hidden="true" size={16} />
+        <span>{nextAction}</span>
+      </div>
     </section>
   );
 }
@@ -2078,6 +2196,7 @@ function Dashboard({ user, data, setData, onSignOut, cloudStatus, isAdmin, initi
           <section className="dashboard-view">
             <InstallPrompt />
             <ClockPanel activeSession={activeSession} liveNow={liveNow} onToggleClock={toggleClock} />
+            <TodayTimeline sessions={userSessions} activeSession={activeSession} liveNow={liveNow} />
             <MonthlyBalanceAlert completedSessions={completedSessions} liveNow={liveNow} settings={settings} />
             <StatsGrid completedSessions={completedSessions} liveNow={liveNow} settings={settings} />
             <InsightsPanel completedSessions={completedSessions} liveNow={liveNow} settings={settings} />
@@ -2142,7 +2261,7 @@ function Dashboard({ user, data, setData, onSignOut, cloudStatus, isAdmin, initi
 function getAppRoute() {
   if (typeof window === "undefined") return "/";
   const path = window.location.pathname;
-  if (path === "/signin" || path === "/signup" || path === "/app" || path === "/admin") return path;
+  if (path === "/signin" || path === "/signup" || path === "/verified" || path === "/app" || path === "/admin") return path;
   return "/";
 }
 
@@ -2317,7 +2436,7 @@ export default function App() {
         email,
         password,
         options: {
-          emailRedirectTo: `${siteUrl}/signin`,
+          emailRedirectTo: `${siteUrl}/verified`,
           data: { name },
         },
       });
@@ -2387,6 +2506,8 @@ export default function App() {
     <div className="app-shell">
       {passwordRecovery ? (
         <PasswordResetScreen onUpdatePassword={updatePassword} onSignOut={signOut} />
+      ) : route === "/verified" ? (
+        <EmailVerifiedScreen hasUser={Boolean(user)} onContinue={() => navigate("/app")} onSignIn={() => navigate("/signin")} />
       ) : user ? (
         <Dashboard
           user={user}
