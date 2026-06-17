@@ -551,27 +551,6 @@ textarea:focus {
   line-height: 1.4;
 }
 
-.verification-panel {
-  display: grid;
-  gap: 18px;
-}
-
-.verified-icon {
-  width: 62px;
-  height: 62px;
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  color: #000;
-  background: var(--text);
-}
-
-.verification-actions {
-  display: grid;
-  gap: 10px;
-}
-
 .form-message.compact {
   min-height: 0;
   margin: 2px 0;

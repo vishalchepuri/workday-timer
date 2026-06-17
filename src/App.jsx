@@ -3,7 +3,6 @@ import {
   ArrowRight,
   BarChart3,
   CalendarDays,
-  CheckCircle2,
   Download,
   Home,
   ListChecks,
@@ -740,35 +739,6 @@ function PasswordResetScreen({ onUpdatePassword, onSignOut }) {
         <p className={`form-message ${message ? "" : "neutral"}`} role="status" aria-live="polite">
           {message || "Use at least 6 characters."}
         </p>
-      </div>
-    </section>
-  );
-}
-
-function EmailVerifiedScreen({ hasUser, onContinue, onSignIn }) {
-  return (
-    <section className="auth-screen verification-screen" aria-labelledby="verified-title">
-      <button className="back-home" type="button" onClick={hasUser ? onContinue : onSignIn}>
-        HourLog
-      </button>
-      <div className="auth-panel verification-panel">
-        <div className="verified-icon" aria-hidden="true">
-          <CheckCircle2 size={34} />
-        </div>
-        <div className="auth-heading">
-          <p className="eyebrow">Email verification</p>
-          <h1 id="verified-title">{hasUser ? "Email verified" : "Checking your email link"}</h1>
-          <p>
-            {hasUser
-              ? "Your HourLog account is ready. Continue to your dashboard and start tracking your work sessions."
-              : "If verification is complete, sign in with the email and password you used when creating the account."}
-          </p>
-        </div>
-        <div className="verification-actions">
-          <button className="primary-action" type="button" onClick={hasUser ? onContinue : onSignIn}>
-            {hasUser ? "Open dashboard" : "Go to sign in"}
-          </button>
-        </div>
       </div>
     </section>
   );
@@ -2261,7 +2231,7 @@ function Dashboard({ user, data, setData, onSignOut, cloudStatus, isAdmin, initi
 function getAppRoute() {
   if (typeof window === "undefined") return "/";
   const path = window.location.pathname;
-  if (path === "/signin" || path === "/signup" || path === "/verified" || path === "/app" || path === "/admin") return path;
+  if (path === "/signin" || path === "/signup" || path === "/app" || path === "/admin") return path;
   return "/";
 }
 
@@ -2436,7 +2406,7 @@ export default function App() {
         email,
         password,
         options: {
-          emailRedirectTo: `${siteUrl}/verified`,
+          emailRedirectTo: `${siteUrl}/signin`,
           data: { name },
         },
       });
@@ -2506,8 +2476,6 @@ export default function App() {
     <div className="app-shell">
       {passwordRecovery ? (
         <PasswordResetScreen onUpdatePassword={updatePassword} onSignOut={signOut} />
-      ) : route === "/verified" ? (
-        <EmailVerifiedScreen hasUser={Boolean(user)} onContinue={() => navigate("/app")} onSignIn={() => navigate("/signin")} />
       ) : user ? (
         <Dashboard
           user={user}
