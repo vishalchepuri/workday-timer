@@ -17,6 +17,12 @@
   box-sizing: border-box;
 }
 
+*,
+*::before,
+*::after {
+  min-width: 0;
+}
+
 html {
   min-height: 100%;
   background: var(--bg);
@@ -31,7 +37,30 @@ body {
   overflow-x: hidden;
 }
 
+p,
+span,
+strong,
+small,
+b,
+h1,
+h2,
 button,
+label {
+  overflow-wrap: anywhere;
+}
+
+button,
+input,
+select,
+textarea {
+  max-width: 100%;
+}
+
+img,
+svg {
+  flex-shrink: 0;
+}
+
 input,
 select {
   font: inherit;
@@ -353,6 +382,7 @@ p {
 .calendar-panel,
 .add-session-panel,
 .stat-card {
+  max-width: 100%;
   border: 1px solid rgba(255, 255, 255, 0.11);
   background: #070707;
   box-shadow: var(--shadow);
@@ -565,6 +595,7 @@ textarea:focus {
 
 .install-prompt,
 .balance-alert {
+  max-width: 100%;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto auto;
   gap: 12px;
@@ -701,11 +732,14 @@ textarea:focus {
 
 .dashboard-main {
   min-width: 0;
+  max-width: 100%;
   display: grid;
   gap: 14px;
 }
 
 .dashboard-view {
+  min-width: 0;
+  max-width: 100%;
   display: grid;
   gap: 14px;
 }
@@ -936,6 +970,7 @@ textarea:focus {
   grid-template-columns: minmax(0, 0.8fr) minmax(0, 1fr) auto auto;
   gap: 8px;
   align-items: end;
+  max-width: 100%;
 }
 
 .holiday-list {
@@ -1095,6 +1130,7 @@ textarea:focus {
 .insights-panel,
 .timeline-panel,
 .today-flow-panel {
+  max-width: 100%;
   border: 1px solid rgba(255, 255, 255, 0.11);
   border-radius: 8px;
   background: #070707;
@@ -1294,6 +1330,7 @@ textarea:focus {
 }
 
 .admin-panel {
+  max-width: 100%;
   border: 1px solid rgba(255, 255, 255, 0.11);
   border-radius: 8px;
   background: #070707;
@@ -1314,6 +1351,7 @@ textarea:focus {
   gap: 10px;
   align-items: end;
   margin-bottom: 14px;
+  max-width: 100%;
 }
 
 .toggle-row {
@@ -1353,6 +1391,8 @@ textarea:focus {
   gap: 10px;
   max-height: 620px;
   overflow: auto;
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch;
 }
 
 .admin-user-row,
@@ -1390,6 +1430,7 @@ textarea:focus {
 }
 
 .profile-panel {
+  max-width: 100%;
   border: 1px solid rgba(255, 255, 255, 0.11);
   border-radius: 8px;
   background: #070707;
@@ -1481,6 +1522,8 @@ textarea:focus {
   padding: 14px;
   background: #000;
   overflow-x: auto;
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch;
 }
 
 .bar-wrap {
@@ -1517,6 +1560,8 @@ textarea:focus {
   max-height: 560px;
   overflow: auto;
   padding-right: 2px;
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch;
 }
 
 .history-day {
@@ -1902,17 +1947,20 @@ textarea:focus {
   }
 
   .mobile-nav {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    display: flex;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
     margin-left: 0;
     margin-right: 0;
+    padding-bottom: 8px;
   }
 
   .mobile-nav button {
-    min-width: 0;
+    flex: 0 0 auto;
+    min-width: 96px;
     min-height: 38px;
     font-size: 0.86rem;
-    padding: 0 6px;
+    padding: 0 10px;
   }
 
   .topbar {
@@ -1950,8 +1998,22 @@ textarea:focus {
     box-shadow: none;
   }
 
+  .clock-panel > *,
+  .settings-panel > *,
+  .calendar-panel > *,
+  .add-session-panel > *,
+  .report-panel > *,
+  .history-panel > *,
+  .insights-panel > *,
+  .timeline-panel > *,
+  .admin-panel > *,
+  .profile-panel > *,
+  .today-flow-panel > * {
+    max-width: 100%;
+  }
+
   .today-flow-summary {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: 1fr;
     gap: 7px;
   }
 
@@ -2009,9 +2071,10 @@ textarea:focus {
     flex-direction: column;
   }
 
-  .filters {
+  .filters,
+  .admin-filters {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
   }
 
   .filter {
@@ -2025,6 +2088,49 @@ textarea:focus {
 
   .holiday-control {
     grid-template-columns: 1fr;
+  }
+
+  .target-controls,
+  .target-month-grid,
+  .profile-form,
+  .custom-range,
+  .edit-grid,
+  .add-session-form {
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .add-session-actions,
+  .edit-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    justify-content: stretch;
+  }
+
+  .tool-button,
+  .primary-action,
+  .secondary-action {
+    width: 100%;
+  }
+
+  .history-day-header,
+  .history-item,
+  .admin-user-row,
+  .admin-session-row,
+  .calendar-list-day {
+    grid-template-columns: 1fr;
+  }
+
+  .history-day-header {
+    display: grid;
+  }
+
+  .history-side,
+  .admin-user-row > div:last-child,
+  .admin-session-row > div:last-child,
+  .calendar-list-day > div:last-child {
+    justify-items: start;
+    text-align: left;
   }
 
   .calendar-legend {
@@ -2087,7 +2193,7 @@ textarea:focus {
     text-align: left;
   }
 
-  .mobile-nav {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .mobile-nav button {
+    min-width: 88px;
   }
 }
