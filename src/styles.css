@@ -9,7 +9,7 @@
   --accent-2: #c9c9c9;
   --danger: #ff6b6b;
   --warning: #f3c969;
-  --shadow: 0 24px 80px rgba(0, 0, 0, 0.74);
+  --shadow: 0 14px 38px rgba(0, 0, 0, 0.42);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", Inter, Segoe UI, sans-serif;
 }
 
@@ -1003,7 +1003,8 @@ textarea:focus {
 
 .clock-panel {
   min-height: 190px;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   justify-content: space-between;
   align-items: center;
   gap: 18px;
@@ -1042,6 +1043,26 @@ textarea:focus {
   height: 10px;
   border-radius: 50%;
   background: currentColor;
+}
+
+.manual-login-box {
+  grid-column: 1 / -1;
+  width: min(440px, 100%);
+}
+
+.manual-login-form {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #000;
+  padding: 12px;
+}
+
+.manual-login-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .stats-grid {
@@ -1790,8 +1811,7 @@ textarea:focus {
 
 @media (max-width: 560px) {
   .app-shell {
-    padding-left: 10px;
-    padding-right: 10px;
+    padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
   }
 
   .home-screen {
@@ -1866,15 +1886,19 @@ textarea:focus {
     min-height: 40px;
   }
 
-  .stats-grid,
   .report-summary,
   .custom-range {
     grid-template-columns: 1fr;
   }
 
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
   .dashboard-main,
   .dashboard-view {
-    gap: 12px;
+    gap: 9px;
   }
 
   .mobile-nav {
@@ -1922,15 +1946,23 @@ textarea:focus {
   .today-flow-panel,
   .stat-card {
     border-radius: 8px;
-    padding: 14px;
+    padding: 12px;
+    box-shadow: none;
+  }
+
+  .today-flow-summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 7px;
   }
 
   .today-flow-summary div {
-    min-height: 72px;
+    min-height: 64px;
+    padding: 10px 8px;
   }
 
   .today-session-row {
     grid-template-columns: 1fr;
+    padding: 10px;
   }
 
   .today-session-row b {
@@ -1938,22 +1970,38 @@ textarea:focus {
   }
 
   .clock-panel h2 {
-    font-size: 3rem;
+    font-size: 2.55rem;
     line-height: 1;
+  }
+
+  .clock-panel {
+    grid-template-columns: 1fr;
+    min-height: 0;
+    gap: 12px;
   }
 
   .clock-button {
     min-width: 0;
-    min-height: 48px;
+    min-height: 46px;
     padding: 0 14px;
   }
 
+  .manual-login-box {
+    width: 100%;
+  }
+
+  .manual-login-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
   .stat-card {
-    min-height: 84px;
+    min-height: 74px;
   }
 
   .stat-card strong {
-    font-size: 1.35rem;
+    margin-top: 10px;
+    font-size: 1.12rem;
   }
 
   .section-header {

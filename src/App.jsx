@@ -805,10 +805,36 @@ function InstallPrompt() {
   );
 }
 
-function ClockPanel({ activeSession, liveNow, onToggleClock }) {
+function ClockPanel({ activeSession, liveNow, onToggleClock, onManualLogin }) {
   const isActive = Boolean(activeSession);
   const elapsed = activeSession ? liveNow.getTime() - new Date(activeSession.startTime).getTime() : 0;
   const longSession = elapsed > 12 * 60 * 60 * 1000;
+  const [manualOpen, setManualOpen] = useState(false);
+  const [manualTime, setManualTime] = useState(() => toDateTimeLocalValue(new Date()));
+  const [manualMessage, setManualMessage] = useState("");
+
+  useEffect(() => {
+    if (isActive) {
+      setManualOpen(false);
+      setManualMessage("");
+    }
+  }, [isActive]);
+
+  function startManualLogin(event) {
+    event.preventDefault();
+    if (!manualTime) {
+      setManualMessage("Choose the login time.");
+      return;
+    }
+    const start = new Date(manualTime);
+    if (start > liveNow) {
+      setManualMessage("Login time cannot be in the future.");
+      return;
+    }
+    onManualLogin(fromDateTimeLocalValue(manualTime));
+    setManualOpen(false);
+    setManualMessage("");
+  }
 
   return (
     <section className="clock-panel" aria-labelledby="clock-heading">
@@ -824,6 +850,49 @@ function ClockPanel({ activeSession, liveNow, onToggleClock }) {
         <span className="clock-dot" aria-hidden="true" />
         <span>{isActive ? "Logout" : "Login"}</span>
       </button>
+      {!isActive && (
+        <div className="manual-login-box">
+          {!manualOpen ? (
+            <button
+              className="text-action"
+              type="button"
+              onClick={() => {
+                setManualTime(toDateTimeLocalValue(new Date()));
+                setManualOpen(true);
+              }}
+            >
+              Missed login?
+            </button>
+          ) : (
+            <form className="manual-login-form" onSubmit={startManualLogin}>
+              <label>
+                <span>Actual login time</span>
+                <input
+                  type="datetime-local"
+                  value={manualTime}
+                  onChange={(event) => setManualTime(event.target.value)}
+                />
+              </label>
+              <div className="manual-login-actions">
+                <button className="tool-button" type="submit">
+                  Start from this time
+                </button>
+                <button
+                  className="tool-button ghost"
+                  type="button"
+                  onClick={() => {
+                    setManualOpen(false);
+                    setManualMessage("");
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+              {manualMessage && <p className="form-message compact">{manualMessage}</p>}
+            </form>
+          )}
+        </div>
+      )}
     </section>
   );
 }
@@ -1931,6 +2000,26 @@ function Dashboard({ user, data, setData, onSignOut, cloudStatus, isAdmin, initi
     syncCloud(() => upsertRemoteSession(user.id, changedSession));
   }
 
+  function manualLogin(startTime) {
+    if (activeSession) return;
+    const changedSession = {
+      id: createId("session"),
+      userId: user.id,
+      startTime,
+      endTime: null,
+      note: "Manual login",
+    };
+    setData((current) => {
+      const next = {
+        ...current,
+        sessions: [...current.sessions, changedSession],
+      };
+      writeDatabase(next);
+      return next;
+    });
+    syncCloud(() => upsertRemoteSession(user.id, changedSession));
+  }
+
   function updateDailyTarget(value) {
     const dailyTargetHours = Number.isFinite(value) ? Math.min(24, Math.max(1, value)) : 6.5;
     const nextSettings = {
@@ -2165,7 +2254,12 @@ function Dashboard({ user, data, setData, onSignOut, cloudStatus, isAdmin, initi
         {activeView === "overview" && (
           <section className="dashboard-view">
             <InstallPrompt />
-            <ClockPanel activeSession={activeSession} liveNow={liveNow} onToggleClock={toggleClock} />
+            <ClockPanel
+              activeSession={activeSession}
+              liveNow={liveNow}
+              onToggleClock={toggleClock}
+              onManualLogin={manualLogin}
+            />
             <TodayTimeline sessions={userSessions} activeSession={activeSession} liveNow={liveNow} />
             <MonthlyBalanceAlert completedSessions={completedSessions} liveNow={liveNow} settings={settings} />
             <StatsGrid completedSessions={completedSessions} liveNow={liveNow} settings={settings} />
